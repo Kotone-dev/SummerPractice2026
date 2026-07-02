@@ -1,0 +1,12 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="Editor.App.CanvasControl"
+             Background="#2D2D2D">
+
+    <Panel ClipToBounds="True">
+        <Image x:Name="ImageControl"
+               RenderTransformOrigin="0,0"
+               IsHitTestVisible="True" />
+    </Panel>
+
+</UserControl>
