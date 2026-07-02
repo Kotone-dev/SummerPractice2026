@@ -2,8 +2,35 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-        mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
+        xmlns:local="clr-namespace:Editor.App"
+        mc:Ignorable="d" d:DesignWidth="1024" d:DesignHeight="768"
         x:Class="Editor.App.MainWindow"
-        Title="Editor.App">
-    Welcome to Avalonia!
+        Title="SemanticRasterEditor"
+        Width="1024" Height="768"
+        WindowStartupLocation="CenterScreen">
+
+    <DockPanel>
+        <Menu DockPanel.Dock="Top">
+            <MenuItem Header="_Файл" x:Name="MenuFile" />
+            <MenuItem Header="_Вид" x:Name="MenuView" />
+        </Menu>
+
+        <Border DockPanel.Dock="Bottom" Background="#1E1E1E" Padding="8,4">
+            <Grid ColumnDefinitions="*,Auto">
+                <TextBlock x:Name="ZoomText"
+                           Grid.Column="0"
+                           Text="100%"
+                           Foreground="#AAAAAA"
+                           VerticalAlignment="Center" />
+                <TextBlock x:Name="SizeText"
+                           Grid.Column="1"
+                           Text=""
+                           Foreground="#AAAAAA"
+                           VerticalAlignment="Center" />
+            </Grid>
+        </Border>
+
+        <local:CanvasControl x:Name="EditorCanvas" />
+    </DockPanel>
+
 </Window>
