@@ -1,5 +1,6 @@
 ﻿using Avalonia;
 using Microsoft.Extensions.DependencyInjection;
+using Editor.Services;
 using System;
 
 namespace Editor.App;
@@ -27,5 +28,6 @@ class Program
 
     private static void ConfigureServices(IServiceCollection services)
     {
+        services.AddSingleton<FileService>();
     }
 }
