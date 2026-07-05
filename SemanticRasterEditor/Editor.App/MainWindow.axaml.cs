@@ -16,6 +16,7 @@ namespace Editor.App
     {
         private readonly FileService _fileService = new();
         private readonly ImageDocument _document = new();
+        private readonly ImageFilterService _filterService = new();
 
         public MainWindow()
         {
@@ -38,6 +39,14 @@ namespace Editor.App
             var viewMenu = this.FindControl<MenuItem>("MenuView")!;
             viewMenu.Items.Add(CreateMenuItem("Вписать в окно", OnFitToWindowClick));
             viewMenu.Items.Add(CreateMenuItem("Сбросить зум", OnResetZoomClick));
+
+            var correctionMenu = this.FindControl<MenuItem>("MenuCorrection")!;
+            correctionMenu.Items.Add(CreateMenuItem("Яркость/Контраст...", OnBrightnessContrastClick));
+            correctionMenu.Items.Add(new Separator());
+            correctionMenu.Items.Add(CreateMenuItem("Эрозия", OnErodeClick));
+            correctionMenu.Items.Add(CreateMenuItem("Дилатация", OnDilateClick));
+            correctionMenu.Items.Add(CreateMenuItem("Открытие", OnOpenMorphologyClick));
+            correctionMenu.Items.Add(CreateMenuItem("Закрытие", OnCloseMorphologyClick));
         }
 
         private static MenuItem CreateMenuItem(string header, EventHandler<RoutedEventArgs> handler)
@@ -123,6 +132,59 @@ namespace Editor.App
         private void OnResetZoomClick(object? sender, RoutedEventArgs e)
         {
             EditorCanvas.ResetZoom();
+            UpdateStatusBar();
+        }
+
+        private async void OnBrightnessContrastClick(object? sender, RoutedEventArgs e)
+        {
+            if (_document.Bitmap is null)
+                return;
+
+            var dialog = new FilterDialog();
+            var result = await dialog.ShowDialog<bool?>(this);
+
+            if (result != true)
+                return;
+
+            var newBitmap = _filterService.AdjustBrightness(_document.Bitmap, dialog.Brightness);
+            var contrastBitmap = _filterService.AdjustContrast(newBitmap, dialog.Contrast);
+            newBitmap.Dispose();
+
+            _document.SetBitmap(contrastBitmap);
+            EditorCanvas.SetImage(contrastBitmap);
+            UpdateTitle();
+            UpdateStatusBar();
+        }
+
+        private void OnErodeClick(object? sender, RoutedEventArgs e)
+        {
+            ApplyMorphology(MorphologyType.Erode);
+        }
+
+        private void OnDilateClick(object? sender, RoutedEventArgs e)
+        {
+            ApplyMorphology(MorphologyType.Dilate);
+        }
+
+        private void OnOpenMorphologyClick(object? sender, RoutedEventArgs e)
+        {
+            ApplyMorphology(MorphologyType.Open);
+        }
+
+        private void OnCloseMorphologyClick(object? sender, RoutedEventArgs e)
+        {
+            ApplyMorphology(MorphologyType.Close);
+        }
+
+        private void ApplyMorphology(MorphologyType type)
+        {
+            if (_document.Bitmap is null)
+                return;
+
+            var newBitmap = _filterService.ApplyMorphology(_document.Bitmap, type);
+            _document.SetBitmap(newBitmap);
+            EditorCanvas.SetImage(newBitmap);
+            UpdateTitle();
             UpdateStatusBar();
         }
 
