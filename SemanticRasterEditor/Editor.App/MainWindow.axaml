@@ -13,6 +13,7 @@
         <Menu DockPanel.Dock="Top">
             <MenuItem Header="_Файл" x:Name="MenuFile" />
             <MenuItem Header="_Вид" x:Name="MenuView" />
+            <MenuItem Header="_Коррекция" x:Name="MenuCorrection" />
         </Menu>
 
         <Border DockPanel.Dock="Bottom" Background="#1E1E1E" Padding="8,4">
