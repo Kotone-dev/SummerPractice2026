@@ -1,0 +1,25 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="Editor.App.LayerPanel"
+             Width="220" Background="#252526">
+
+    <DockPanel>
+        <TextBlock DockPanel.Dock="Top" Text="Слои"
+                   FontWeight="Bold" FontSize="13"
+                   Foreground="#CCCCCC" Margin="8,8,8,6" />
+
+        <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" Margin="8,4,8,8" Spacing="4">
+            <Button x:Name="BtnAdd" Content="+" Width="28" ToolTip.Tip="Добавить слой" />
+            <Button x:Name="BtnRemove" Content="-" Width="28" ToolTip.Tip="Удалить слой" />
+            <Button x:Name="BtnUp" Content="▲" Width="28" ToolTip.Tip="Переместить вверх" />
+            <Button x:Name="BtnDown" Content="▼" Width="28" ToolTip.Tip="Переместить вниз" />
+        </StackPanel>
+
+        <ListBox x:Name="LayerList"
+                 Background="Transparent"
+                 BorderThickness="0"
+                 Foreground="#CCCCCC"
+                 SelectionMode="Single" />
+    </DockPanel>
+
+</UserControl>
