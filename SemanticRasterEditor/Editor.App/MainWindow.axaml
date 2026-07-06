@@ -31,6 +31,8 @@
             </Grid>
         </Border>
 
+        <local:LayerPanel DockPanel.Dock="Right" x:Name="Layers" />
+
         <local:CanvasControl x:Name="EditorCanvas" />
     </DockPanel>
 
