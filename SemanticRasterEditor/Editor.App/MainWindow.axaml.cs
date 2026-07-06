@@ -1,5 +1,4 @@
 using System;
-using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
@@ -7,7 +6,6 @@ using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Platform.Storage;
-using Editor.Models;
 using Editor.Services;
 
 namespace Editor.App
@@ -15,14 +13,16 @@ namespace Editor.App
     public partial class MainWindow : Window
     {
         private readonly FileService _fileService = new();
-        private readonly ImageDocument _document = new();
         private readonly ImageFilterService _filterService = new();
+        private readonly LayerService _layerService = new();
 
         public MainWindow()
         {
             InitializeComponent();
             SetupMenu();
             EditorCanvas.ZoomChanged += OnZoomChanged;
+            Layers.Bind(_layerService);
+            Layers.LayerChanged += OnLayerChanged;
             KeyDown += OnKeyDown;
         }
 
@@ -88,26 +88,31 @@ namespace Editor.App
             if (bitmap is null)
                 return;
 
-            _document.SetBitmap(bitmap);
-            _document.FilePath = path;
+            _layerService.Dispose();
+            _layerService.Add(bitmap, Path.GetFileName(path));
 
             Title = $"SemanticRasterEditor — {Path.GetFileName(path)}";
-            EditorCanvas.SetImage(bitmap);
+            RefreshCanvas();
+            Layers.Refresh();
             UpdateStatusBar();
             EditorCanvas.FitToWindow();
         }
 
         private async void OnSaveClick(object? sender, RoutedEventArgs e)
         {
-            if (_document.Bitmap is null)
+            if (_layerService.Count == 0)
                 return;
 
-            if (_document.FilePath is not null)
+            if (_layerService.Layers[0].Bitmap is not null)
             {
-                _fileService.SaveImage(_document.Bitmap, _document.FilePath);
-                _document.MarkSaved(_document.FilePath);
-                UpdateTitle();
-                return;
+                var filePath = GetCurrentFilePath();
+                if (filePath is not null)
+                {
+                    using var composite = _layerService.Composite();
+                    _fileService.SaveImage(composite, filePath);
+                    UpdateTitle();
+                    return;
+                }
             }
 
             await SaveAs();
@@ -137,7 +142,8 @@ namespace Editor.App
 
         private async void OnBrightnessContrastClick(object? sender, RoutedEventArgs e)
         {
-            if (_document.Bitmap is null)
+            var active = _layerService.ActiveLayer;
+            if (active?.Bitmap is null)
                 return;
 
             var dialog = new FilterDialog();
@@ -146,14 +152,13 @@ namespace Editor.App
             if (result != true)
                 return;
 
-            var newBitmap = _filterService.AdjustBrightness(_document.Bitmap, dialog.Brightness);
+            var newBitmap = _filterService.AdjustBrightness(active.Bitmap, dialog.Brightness);
             var contrastBitmap = _filterService.AdjustContrast(newBitmap, dialog.Contrast);
             newBitmap.Dispose();
 
-            _document.SetBitmap(contrastBitmap);
-            EditorCanvas.SetImage(contrastBitmap);
+            active.SetBitmap(contrastBitmap);
+            RefreshCanvas();
             UpdateTitle();
-            UpdateStatusBar();
         }
 
         private void OnErodeClick(object? sender, RoutedEventArgs e)
@@ -178,14 +183,19 @@ namespace Editor.App
 
         private void ApplyMorphology(MorphologyType type)
         {
-            if (_document.Bitmap is null)
+            var active = _layerService.ActiveLayer;
+            if (active?.Bitmap is null)
                 return;
 
-            var newBitmap = _filterService.ApplyMorphology(_document.Bitmap, type);
-            _document.SetBitmap(newBitmap);
-            EditorCanvas.SetImage(newBitmap);
+            var newBitmap = _filterService.ApplyMorphology(active.Bitmap, type);
+            active.SetBitmap(newBitmap);
+            RefreshCanvas();
             UpdateTitle();
-            UpdateStatusBar();
+        }
+
+        private void OnLayerChanged()
+        {
+            RefreshCanvas();
         }
 
         private void OnKeyDown(object? sender, KeyEventArgs e)
@@ -212,7 +222,7 @@ namespace Editor.App
 
         private async Task SaveAs()
         {
-            if (_document.Bitmap is null)
+            if (_layerService.Count == 0)
                 return;
 
             var storage = GetTopLevel(this)?.StorageProvider;
@@ -222,7 +232,7 @@ namespace Editor.App
             var file = await storage.SaveFilePickerAsync(new FilePickerSaveOptions
             {
                 Title = "Сохранить изображение",
-                SuggestedFileName = Path.GetFileName(_document.FilePath ?? "image.png"),
+                SuggestedFileName = Path.GetFileName(GetCurrentFilePath() ?? "image.png"),
                 FileTypeChoices = new[]
                 {
                     new FilePickerFileType("PNG")
@@ -247,9 +257,33 @@ namespace Editor.App
             if (path is null)
                 return;
 
-            _fileService.SaveImage(_document.Bitmap, path);
-            _document.MarkSaved(path);
+            using var composite = _layerService.Composite();
+            _fileService.SaveImage(composite, path);
             UpdateTitle();
+        }
+
+        private string? GetCurrentFilePath()
+        {
+            var active = _layerService.ActiveLayer;
+            if (active?.Bitmap is null)
+                return null;
+
+            return _layerService.Count > 0 && _layerService.Layers[0].Bitmap is not null
+                ? null
+                : null;
+        }
+
+        private void RefreshCanvas()
+        {
+            if (_layerService.Count == 0)
+            {
+                EditorCanvas.SetImage(null);
+                return;
+            }
+
+            using var composite = _layerService.Composite();
+            EditorCanvas.SetImage(composite);
+            UpdateStatusBar();
         }
 
         private void OnZoomChanged(float zoom)
@@ -262,20 +296,22 @@ namespace Editor.App
             var zoomPercent = (int)(EditorCanvas.Zoom * 100);
             ZoomText.Text = $"{zoomPercent}%";
 
-            if (_document.Bitmap is not null)
-                SizeText.Text = $"{_document.Width} × {_document.Height}";
+            if (_layerService.Count > 0 && _layerService.ActiveLayer?.Bitmap is not null)
+            {
+                var bmp = _layerService.ActiveLayer.Bitmap;
+                SizeText.Text = $"{bmp.Width} × {bmp.Height}";
+            }
             else
                 SizeText.Text = string.Empty;
         }
 
         private void UpdateTitle()
         {
-            var fileName = _document.FilePath is not null
-                ? Path.GetFileName(_document.FilePath)
+            var fileName = _layerService.Count > 0 && _layerService.Layers[0].Bitmap is not null
+                ? _layerService.Layers[0].Name
                 : "Без имени";
 
-            var modified = _document.IsModified ? " *" : "";
-            Title = $"SemanticRasterEditor — {fileName}{modified}";
+            Title = $"SemanticRasterEditor — {fileName}";
         }
     }
 }
