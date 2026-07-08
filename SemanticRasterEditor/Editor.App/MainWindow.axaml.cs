@@ -15,14 +15,18 @@ namespace Editor.App
         private readonly FileService _fileService = new();
         private readonly ImageFilterService _filterService = new();
         private readonly LayerService _layerService = new();
+        private SamService? _samService;
+        private bool _smartSelectActive;
 
         public MainWindow()
         {
             InitializeComponent();
             SetupMenu();
             EditorCanvas.ZoomChanged += OnZoomChanged;
+            EditorCanvas.ClickOnImage += OnImageClicked;
             Layers.Bind(_layerService);
             Layers.LayerChanged += OnLayerChanged;
+            BtnSmartSelect.Click += OnSmartSelectClick;
             KeyDown += OnKeyDown;
         }
 
@@ -103,16 +107,13 @@ namespace Editor.App
             if (_layerService.Count == 0)
                 return;
 
-            if (_layerService.Layers[0].Bitmap is not null)
+            var filePath = GetCurrentFilePath();
+            if (filePath is not null)
             {
-                var filePath = GetCurrentFilePath();
-                if (filePath is not null)
-                {
-                    using var composite = _layerService.Composite();
-                    _fileService.SaveImage(composite, filePath);
-                    UpdateTitle();
-                    return;
-                }
+                using var composite = _layerService.Composite();
+                _fileService.SaveImage(composite, filePath);
+                UpdateTitle();
+                return;
             }
 
             await SaveAs();
@@ -193,6 +194,51 @@ namespace Editor.App
             UpdateTitle();
         }
 
+        private void OnSmartSelectClick(object? sender, RoutedEventArgs e)
+        {
+            _smartSelectActive = !_smartSelectActive;
+            EditorCanvas.SmartSelectMode = _smartSelectActive;
+            BtnSmartSelect.Content = _smartSelectActive
+                ? "Выделение (SAM) [АКТИВНО]"
+                : "Выделение (SAM)";
+        }
+
+        private void OnImageClicked(float pixelX, float pixelY)
+        {
+            var active = _layerService.ActiveLayer;
+            if (active?.Bitmap is null)
+                return;
+
+            EnsureSamService();
+            if (_samService is null)
+                return;
+
+            var mask = _samService.Predict(active.Bitmap, pixelX, pixelY);
+            active.SetMask(mask);
+            RefreshCanvas();
+        }
+
+        private void EnsureSamService()
+        {
+            if (_samService is not null)
+                return;
+
+            var modelsDir = Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "Assets", "Models");
+            modelsDir = Path.GetFullPath(modelsDir);
+
+            if (!Directory.Exists(modelsDir))
+                return;
+
+            try
+            {
+                _samService = SamService.LoadFromDirectory(modelsDir);
+            }
+            catch
+            {
+                _samService = null;
+            }
+        }
+
         private void OnLayerChanged()
         {
             RefreshCanvas();
@@ -264,13 +310,9 @@ namespace Editor.App
 
         private string? GetCurrentFilePath()
         {
-            var active = _layerService.ActiveLayer;
-            if (active?.Bitmap is null)
+            if (_layerService.Count > 0 && _layerService.Layers[0].Bitmap is not null)
                 return null;
-
-            return _layerService.Count > 0 && _layerService.Layers[0].Bitmap is not null
-                ? null
-                : null;
+            return null;
         }
 
         private void RefreshCanvas()
