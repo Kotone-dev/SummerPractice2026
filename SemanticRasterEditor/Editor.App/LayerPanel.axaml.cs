@@ -8,6 +8,7 @@ namespace Editor.App
     public partial class LayerPanel : UserControl
     {
         private LayerService? _layerService;
+        private bool _isRefreshing;
 
         public event Action? LayerChanged;
 
@@ -28,6 +29,22 @@ namespace Editor.App
         }
 
         public void Refresh()
+        {
+            if (_isRefreshing)
+                return;
+
+            _isRefreshing = true;
+            try
+            {
+                RefreshInner();
+            }
+            finally
+            {
+                _isRefreshing = false;
+            }
+        }
+
+        private void RefreshInner()
         {
             if (_layerService is null)
                 return;
