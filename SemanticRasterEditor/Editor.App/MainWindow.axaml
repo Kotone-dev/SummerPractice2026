@@ -16,6 +16,15 @@
             <MenuItem Header="_Коррекция" x:Name="MenuCorrection" />
         </Menu>
 
+        <Border DockPanel.Dock="Top" Background="#2D2D2D" Padding="4,2">
+            <StackPanel Orientation="Horizontal" Spacing="4">
+                <Button x:Name="BtnSmartSelect"
+                        Content="Выделение (SAM)"
+                        Padding="8,4"
+                        ToolTip.Tip="Умное выделение объекта по клику" />
+            </StackPanel>
+        </Border>
+
         <Border DockPanel.Dock="Bottom" Background="#1E1E1E" Padding="8,4">
             <Grid ColumnDefinitions="*,Auto">
                 <TextBlock x:Name="ZoomText"

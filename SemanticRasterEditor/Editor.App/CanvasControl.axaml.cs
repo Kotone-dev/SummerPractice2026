@@ -24,7 +24,11 @@ namespace Editor.App
 
         public float Zoom => _state.Zoom;
 
+        public bool SmartSelectMode { get; set; }
+
         public event Action<float>? ZoomChanged;
+
+        public event Action<float, float>? ClickOnImage;
 
         public CanvasControl()
         {
@@ -123,6 +127,13 @@ namespace Editor.App
                 _isPanning = true;
                 _lastPanPosition = e.GetPosition(this);
                 e.Pointer.Capture(this);
+            }
+            else if (e.GetCurrentPoint(this).Properties.IsLeftButtonPressed && SmartSelectMode)
+            {
+                var pos = e.GetPosition(this);
+                float pixelX = ((float)pos.X - _state.PanOffset.X) / _state.Zoom;
+                float pixelY = ((float)pos.Y - _state.PanOffset.Y) / _state.Zoom;
+                ClickOnImage?.Invoke(pixelX, pixelY);
             }
         }
 
