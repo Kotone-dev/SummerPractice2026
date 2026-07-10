@@ -13,6 +13,11 @@ namespace Editor.Services
 
         public SamService(string encoderPath, string decoderPath)
         {
+            if (string.IsNullOrEmpty(encoderPath))
+                throw new ArgumentException("Путь к encoder не может быть пустым", nameof(encoderPath));
+            if (string.IsNullOrEmpty(decoderPath))
+                throw new ArgumentException("Путь к decoder не может быть пустым", nameof(decoderPath));
+
             _encoder = new InferenceSession(encoderPath);
             _decoder = new InferenceSession(decoderPath);
         }
@@ -23,15 +28,18 @@ namespace Editor.Services
             var decoderPath = Path.Combine(modelsDir, "mobile_sam_decoder.onnx");
 
             if (!File.Exists(encoderPath))
-                throw new FileNotFoundException("Encoder model not found", encoderPath);
+                throw new FileNotFoundException("Модель encoder не найдена", encoderPath);
             if (!File.Exists(decoderPath))
-                throw new FileNotFoundException("Decoder model not found", decoderPath);
+                throw new FileNotFoundException("Модель decoder не найдена", decoderPath);
 
             return new SamService(encoderPath, decoderPath);
         }
 
         public SKBitmap Predict(SKBitmap image, float pointX, float pointY)
         {
+            if (image is null)
+                throw new ArgumentNullException(nameof(image));
+
             int origW = image.Width;
             int origH = image.Height;
 
@@ -58,8 +66,7 @@ namespace Editor.Services
             };
 
             using var results = _encoder.Run(inputs);
-            var embedding = results.First().AsTensor<float>().ToArray();
-            return embedding;
+            return results.First().AsTensor<float>().ToArray();
         }
 
         private SKBitmap RunDecoder(float[] embedding, float pointX, float pointY, int origW, int origH)
@@ -110,14 +117,19 @@ namespace Editor.Services
             var mask = new SKBitmap(width, height, SKColorType.Alpha8, SKAlphaType.Unpremul);
 
             float maxVal = maskData.Max();
+            if (maxVal <= 0f)
+                return mask;
 
             for (int y = 0; y < height; y++)
             {
                 for (int x = 0; x < width; x++)
                 {
                     int idx = y * width + x;
+                    if (idx >= maskData.Length)
+                        break;
+
                     float val = maskData[idx];
-                    byte alpha = val > 0f ? (byte)(val / maxVal * 255) : (byte)0;
+                    byte alpha = (byte)(val / maxVal * 255);
                     mask.SetPixel(x, y, new SKColor(0, 0, 0, alpha));
                 }
             }
@@ -130,8 +142,8 @@ namespace Editor.Services
             if (_disposed)
                 return;
 
-            _encoder?.Dispose();
-            _decoder?.Dispose();
+            _encoder.Dispose();
+            _decoder.Dispose();
             _disposed = true;
             GC.SuppressFinalize(this);
         }

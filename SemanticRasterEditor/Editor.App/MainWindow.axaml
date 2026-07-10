@@ -3,46 +3,85 @@
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:Editor.App"
-        mc:Ignorable="d" d:DesignWidth="1024" d:DesignHeight="768"
+        mc:Ignorable="d" d:DesignWidth="1920" d:DesignHeight="1080"
         x:Class="Editor.App.MainWindow"
-        Title="SemanticRasterEditor"
-        Width="1024" Height="768"
-        WindowStartupLocation="CenterScreen">
+        Title="RasterEditor"
+        Width="1920" Height="1080"
+        WindowStartupLocation="CenterScreen"
+        WindowState="Maximized"
+        FontFamily="Segoe UI">
 
     <DockPanel>
-        <Menu DockPanel.Dock="Top">
+        <!-- Menu -->
+        <Menu DockPanel.Dock="Top" FontSize="13" Padding="6,4"
+              Background="#1B1E22">
             <MenuItem Header="_Файл" x:Name="MenuFile" />
+            <MenuItem Header="_Редактирование" x:Name="MenuEdit" />
             <MenuItem Header="_Вид" x:Name="MenuView" />
-            <MenuItem Header="_Коррекция" x:Name="MenuCorrection" />
+            <MenuItem Header="_Изображение" x:Name="MenuImage" />
+            <MenuItem Header="_Слой" x:Name="MenuLayer" />
+            <MenuItem Header="_Выделение" x:Name="MenuSelect" />
+            <MenuItem Header="_Фильтры" x:Name="MenuFilters" />
+            <MenuItem Header="_Справка" x:Name="MenuHelp" />
         </Menu>
 
-        <Border DockPanel.Dock="Top" Background="#2D2D2D" Padding="4,2">
-            <StackPanel Orientation="Horizontal" Spacing="4">
-                <Button x:Name="BtnSmartSelect"
-                        Content="Выделение (SAM)"
-                        Padding="8,4"
-                        ToolTip.Tip="Умное выделение объекта по клику" />
-            </StackPanel>
-        </Border>
+        <!-- Tool Options Bar -->
+        <local:ToolOptionsBar x:Name="ToolOptions" DockPanel.Dock="Top" />
 
-        <Border DockPanel.Dock="Bottom" Background="#1E1E1E" Padding="8,4">
-            <Grid ColumnDefinitions="*,Auto">
-                <TextBlock x:Name="ZoomText"
-                           Grid.Column="0"
-                           Text="100%"
-                           Foreground="#AAAAAA"
-                           VerticalAlignment="Center" />
-                <TextBlock x:Name="SizeText"
-                           Grid.Column="1"
-                           Text=""
-                           Foreground="#AAAAAA"
-                           VerticalAlignment="Center" />
+        <!-- Status Bar -->
+        <Border DockPanel.Dock="Bottom" Background="#1B1E22" Padding="8,5"
+                BorderBrush="#4A4A4A" BorderThickness="0,1,0,0">
+            <Grid ColumnDefinitions="Auto,Auto,Auto,*,Auto">
+                <TextBlock x:Name="ZoomText" Grid.Column="0"
+                           Text="100%" Foreground="#888888" FontSize="11"
+                           VerticalAlignment="Center" Margin="0,0,12,0" />
+                <TextBlock x:Name="SizeText" Grid.Column="1"
+                           Text="" Foreground="#888888" FontSize="11"
+                           VerticalAlignment="Center" Margin="0,0,12,0" />
+                <TextBlock x:Name="PpiText" Grid.Column="2"
+                           Text="" Foreground="#888888" FontSize="11"
+                           VerticalAlignment="Center" Margin="0,0,12,0" />
+                <TextBlock x:Name="CursorPosText" Grid.Column="3"
+                           Text="" Foreground="#888888" FontSize="11"
+                           VerticalAlignment="Center" HorizontalAlignment="Right" />
             </Grid>
         </Border>
 
-        <local:LayerPanel DockPanel.Dock="Right" x:Name="Layers" />
+        <!-- Right panel: Layers + AI Chat -->
+        <DockPanel DockPanel.Dock="Right" Width="280" Background="#2C2F34">
+            <local:AiChatPanel x:Name="AiChat" DockPanel.Dock="Bottom" />
+            <local:LayerPanel x:Name="Layers" />
+        </DockPanel>
 
-        <local:CanvasControl x:Name="EditorCanvas" />
+        <!-- Left panel: Tool Palette -->
+        <local:ToolPalette x:Name="ToolPalette" DockPanel.Dock="Left" Width="48" />
+
+        <!-- Center: DocumentTab + Rulers + Canvas -->
+        <DockPanel>
+            <!-- Document Tab -->
+            <local:DocumentTab x:Name="DocTab" DockPanel.Dock="Top" />
+
+            <!-- Rulers corner + horizontal ruler -->
+            <DockPanel DockPanel.Dock="Top">
+                <!-- Corner square -->
+                <Border DockPanel.Dock="Left" Width="26" Height="26"
+                        Background="#1B1E22"
+                        BorderBrush="#4A4A4A" BorderThickness="0,0,1,1" />
+                <!-- Horizontal ruler -->
+                <local:Ruler x:Name="RulerH" DockPanel.Dock="Top"
+                             Height="26" IsHorizontal="True" />
+            </DockPanel>
+
+            <!-- Vertical ruler + Canvas -->
+            <Grid ColumnDefinitions="26,*">
+                <!-- Vertical ruler -->
+                <local:Ruler x:Name="RulerV" Grid.Column="0"
+                             Width="26" IsHorizontal="False" />
+
+                <!-- Canvas -->
+                <local:CanvasControl x:Name="EditorCanvas" Grid.Column="1" />
+            </Grid>
+        </DockPanel>
     </DockPanel>
 
 </Window>

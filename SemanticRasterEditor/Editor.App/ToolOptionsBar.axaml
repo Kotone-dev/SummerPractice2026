@@ -1,0 +1,46 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="Editor.App.ToolOptionsBar"
+             Height="30" Background="#24272B"
+             FontFamily="Segoe UI" FontSize="11">
+
+    <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center" Margin="10,0">
+        <TextBlock Text="Режим:" Foreground="#888888" VerticalAlignment="Center" />
+        <ComboBox x:Name="BlendModeCombo" Width="110" SelectedIndex="0">
+            <ComboBoxItem Content="Нормальный" />
+            <ComboBoxItem Content="Умножение" />
+            <ComboBoxItem Content="Экран" />
+            <ComboBoxItem Content="Осветление" />
+            <ComboBoxItem Content="Затемнение" />
+        </ComboBox>
+
+        <TextBlock Text="Непрозрачность:" Foreground="#888888" VerticalAlignment="Center" />
+        <Slider x:Name="OpacitySlider" Width="80" Minimum="0" Maximum="100" Value="100"
+                VerticalAlignment="Center" />
+        <TextBlock x:Name="OpacityText" Text="100%" Foreground="#AAAAAA" Width="36"
+                   VerticalAlignment="Center" />
+
+        <Border Background="#4A4A4A" Width="1" Height="18" />
+
+        <TextBlock Text="Размер:" Foreground="#888888" VerticalAlignment="Center" />
+        <TextBox x:Name="BrushSizeBox" Width="50" Text="200" PlaceholderText="px"
+                 VerticalAlignment="Center" />
+
+        <Border Background="#4A4A4A" Width="1" Height="18" />
+
+        <!-- TODO: реализовать привязку к краям -->
+        <Button ToolTip.Tip="Привязка к краям" Padding="3" Background="Transparent">
+            <Path Data="M2,2 L22,2 L22,22 L2,22 Z M6,6 L6,18 L18,18 L18,6 Z"
+                  Stroke="#AAAAAA" StrokeThickness="1.5" Width="14" Height="14"
+                  Stretch="Uniform" Fill="Transparent" />
+        </Button>
+
+        <!-- TODO: реализовать симметрию -->
+        <Button ToolTip.Tip="Симметрия" Padding="3" Background="Transparent">
+            <Path Data="M12,2 L12,22 M8,6 C4,6 2,9 2,12 C2,15 4,18 8,18 M16,6 C20,6 22,9 22,12 C22,15 20,18 16,18"
+                  Stroke="#AAAAAA" StrokeThickness="1.5" Width="14" Height="14"
+                  Stretch="Uniform" Fill="Transparent" />
+        </Button>
+    </StackPanel>
+
+</UserControl>
