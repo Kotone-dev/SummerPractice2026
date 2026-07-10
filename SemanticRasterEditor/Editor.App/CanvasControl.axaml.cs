@@ -4,6 +4,7 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Media;
+using Avalonia.Controls.Shapes;
 using Avalonia.Media.Imaging;
 using Editor.Core;
 using SkiaSharp;
@@ -15,7 +16,8 @@ namespace Editor.App
         private readonly CanvasState _state = new();
         private readonly ScaleTransform _scaleTransform = new();
         private readonly TranslateTransform _translateTransform = new();
-        private SKBitmap? _currentBitmap;
+        private int _imageWidth;
+        private int _imageHeight;
         private Bitmap? _displayBitmap;
         private Point _lastPanPosition;
         private bool _isPanning;
@@ -24,11 +26,17 @@ namespace Editor.App
 
         public float Zoom => _state.Zoom;
 
+        public SKPoint PanOffset => _state.PanOffset;
+
         public bool SmartSelectMode { get; set; }
+
+        public bool HasImage => _imageWidth > 0 && _imageHeight > 0;
 
         public event Action<float>? ZoomChanged;
 
         public event Action<float, float>? ClickOnImage;
+
+        public event Action<float, float>? CursorPositionChanged;
 
         public CanvasControl()
         {
@@ -47,30 +55,76 @@ namespace Editor.App
 
         public void SetImage(SKBitmap? bitmap)
         {
-            _currentBitmap = bitmap;
-
             if (bitmap is null)
             {
-                ImageControl.Source = null;
-                _displayBitmap?.Dispose();
-                _displayBitmap = null;
+                _imageWidth = 0;
+                _imageHeight = 0;
+                SetImageSource(null);
+                ShowCheckerboard();
                 return;
             }
 
-            _displayBitmap?.Dispose();
+            _imageWidth = bitmap.Width;
+            _imageHeight = bitmap.Height;
+            HideCheckerboard();
 
             using var image = SKImage.FromBitmap(bitmap);
             using var data = image.Encode(SKEncodedImageFormat.Png, 100);
             using var stream = new MemoryStream(data.ToArray());
 
-            _displayBitmap = new Bitmap(stream);
-            ImageControl.Source = _displayBitmap;
+            SetImageSource(new Bitmap(stream));
             UpdateTransform();
+        }
+
+        private void SetImageSource(Bitmap? source)
+        {
+            _displayBitmap?.Dispose();
+            _displayBitmap = source;
+            ImageControl.Source = _displayBitmap;
+        }
+
+        private void ShowCheckerboard()
+        {
+            if (CheckerboardCanvas is null)
+                return;
+
+            CheckerboardCanvas.Children.Clear();
+
+            var tileSize = 8;
+            var light = new SolidColorBrush(Color.Parse("#FFFFFF"));
+            var dark = new SolidColorBrush(Color.Parse("#E0E0E0"));
+
+            int cols = (int)(Bounds.Width / tileSize) + 2;
+            int rows = (int)(Bounds.Height / tileSize) + 2;
+
+            for (int y = 0; y < rows; y++)
+            {
+                for (int x = 0; x < cols; x++)
+                {
+                    var rect = new Rectangle
+                    {
+                        Width = tileSize,
+                        Height = tileSize,
+                        Fill = (x + y) % 2 == 0 ? light : dark
+                    };
+                    Canvas.SetLeft(rect, x * tileSize);
+                    Canvas.SetTop(rect, y * tileSize);
+                    CheckerboardCanvas.Children.Add(rect);
+                }
+            }
+
+            CheckerboardCanvas.Opacity = 1;
+        }
+
+        private void HideCheckerboard()
+        {
+            if (CheckerboardCanvas is not null)
+                CheckerboardCanvas.Opacity = 0;
         }
 
         public void FitToWindow()
         {
-            if (_currentBitmap is null)
+            if (!HasImage)
                 return;
 
             var canvasSize = new SKSizeI(
@@ -80,9 +134,7 @@ namespace Editor.App
             if (canvasSize.Width <= 0 || canvasSize.Height <= 0)
                 return;
 
-            var imageSize = new SKSizeI(
-                _currentBitmap.Width,
-                _currentBitmap.Height);
+            var imageSize = new SKSizeI(_imageWidth, _imageHeight);
 
             _state.FitToWindow(canvasSize, imageSize);
             UpdateTransform();
@@ -98,7 +150,7 @@ namespace Editor.App
 
         private void OnPointerWheelChanged(object? sender, PointerWheelEventArgs e)
         {
-            if (_currentBitmap is null)
+            if (!HasImage)
                 return;
 
             var position = e.GetPosition(this);
@@ -128,21 +180,27 @@ namespace Editor.App
                 _lastPanPosition = e.GetPosition(this);
                 e.Pointer.Capture(this);
             }
-            else if (e.GetCurrentPoint(this).Properties.IsLeftButtonPressed && SmartSelectMode)
+            else if (e.GetCurrentPoint(this).Properties.IsLeftButtonPressed && SmartSelectMode && HasImage)
             {
                 var pos = e.GetPosition(this);
                 float pixelX = ((float)pos.X - _state.PanOffset.X) / _state.Zoom;
                 float pixelY = ((float)pos.Y - _state.PanOffset.Y) / _state.Zoom;
-                ClickOnImage?.Invoke(pixelX, pixelY);
+
+                if (pixelX >= 0 && pixelX < _imageWidth && pixelY >= 0 && pixelY < _imageHeight)
+                    ClickOnImage?.Invoke(pixelX, pixelY);
             }
         }
 
         private void OnPointerMoved(object? sender, PointerEventArgs e)
         {
+            var position = e.GetPosition(this);
+            float pixelX = ((float)position.X - _state.PanOffset.X) / _state.Zoom;
+            float pixelY = ((float)position.Y - _state.PanOffset.Y) / _state.Zoom;
+            CursorPositionChanged?.Invoke(pixelX, pixelY);
+
             if (!_isPanning)
                 return;
 
-            var position = e.GetPosition(this);
             var dx = (float)(position.X - _lastPanPosition.X);
             var dy = (float)(position.Y - _lastPanPosition.Y);
 
@@ -161,7 +219,6 @@ namespace Editor.App
             }
         }
 
-        // TODO: потом добавить отрисовку инструментов поверх изображения
         private void UpdateTransform()
         {
             _scaleTransform.ScaleX = _state.Zoom;

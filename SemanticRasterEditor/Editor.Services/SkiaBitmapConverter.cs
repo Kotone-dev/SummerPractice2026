@@ -8,9 +8,17 @@ namespace Editor.Services
     {
         public static Mat ToMat(SKBitmap bitmap)
         {
+            if (bitmap is null)
+                throw new ArgumentNullException(nameof(bitmap));
+
             var info = bitmap.Info;
-            var pixels = bitmap.GetPixels(out IntPtr length);
-            var mat = Mat.FromPixelData(info.Height, info.Width, MatType.CV_8UC4, pixels);
+            var pixels = bitmap.GetPixels(out _);
+            var size = info.BytesSize;
+
+            var buffer = new byte[size];
+            Marshal.Copy(pixels, buffer, 0, size);
+
+            var mat = Mat.FromPixelData(info.Height, info.Width, MatType.CV_8UC4, buffer);
 
             var bgra = new Mat();
             Cv2.CvtColor(mat, bgra, ColorConversionCodes.BGRA2BGR);
@@ -21,6 +29,9 @@ namespace Editor.Services
 
         public static SKBitmap ToBitmap(Mat mat)
         {
+            if (mat is null)
+                throw new ArgumentNullException(nameof(mat));
+
             var converted = new Mat();
             Cv2.CvtColor(mat, converted, ColorConversionCodes.BGR2BGRA);
 

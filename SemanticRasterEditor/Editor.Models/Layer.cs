@@ -16,7 +16,13 @@ namespace Editor.Models
 
         public bool IsVisible { get; set; } = true;
 
-        public float Opacity { get; set; } = 1f;
+        private float _opacity = 1f;
+
+        public float Opacity
+        {
+            get => _opacity;
+            set => _opacity = Math.Clamp(value, 0f, 1f);
+        }
 
         public bool HasMask => _mask is not null;
 

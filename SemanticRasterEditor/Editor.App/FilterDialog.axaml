@@ -4,19 +4,22 @@
         Title="Яркость и контраст"
         Width="400" Height="220"
         WindowStartupLocation="CenterOwner"
-        CanResize="False">
+        CanResize="False"
+        Background="#1B1E22"
+        FontFamily="Segoe UI"
+        FontSize="11">
 
     <Grid Margin="16" RowDefinitions="Auto,Auto,Auto,*">
 
         <Grid Grid.Row="0" ColumnDefinitions="100,*" Margin="0,0,0,12">
-            <TextBlock Text="Яркость:" VerticalAlignment="Center" />
+            <TextBlock Text="Яркость:" Foreground="#CCCCCC" VerticalAlignment="Center" />
             <Slider Grid.Column="1" x:Name="BrightnessSlider"
                     Minimum="-255" Maximum="255" Value="0"
                     TickFrequency="1" IsSnapToTickEnabled="True" />
         </Grid>
 
         <Grid Grid.Row="1" ColumnDefinitions="100,*" Margin="0,0,0,12">
-            <TextBlock Text="Контраст:" VerticalAlignment="Center" />
+            <TextBlock Text="Контраст:" Foreground="#CCCCCC" VerticalAlignment="Center" />
             <Slider Grid.Column="1" x:Name="ContrastSlider"
                     Minimum="-100" Maximum="100" Value="0"
                     TickFrequency="1" IsSnapToTickEnabled="True" />
