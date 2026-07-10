@@ -1,9 +1,10 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              x:Class="Editor.App.CanvasControl"
-             Background="#2D2D2D">
+             Background="#3A3A3A">
 
     <Panel ClipToBounds="True">
+        <Canvas x:Name="CheckerboardCanvas" Opacity="0" />
         <Image x:Name="ImageControl"
                RenderTransformOrigin="0,0"
                IsHitTestVisible="True" />

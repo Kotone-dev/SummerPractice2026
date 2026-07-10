@@ -16,21 +16,31 @@ namespace Editor.App
         private readonly ImageFilterService _filterService = new();
         private readonly LayerService _layerService = new();
         private SamService? _samService;
+        private LaMaService? _lamaService;
         private bool _smartSelectActive;
 
         public MainWindow()
         {
             InitializeComponent();
-            SetupMenu();
+            SetupMenus();
             EditorCanvas.ZoomChanged += OnZoomChanged;
             EditorCanvas.ClickOnImage += OnImageClicked;
+            EditorCanvas.CursorPositionChanged += OnCursorPositionChanged;
             Layers.Bind(_layerService);
             Layers.LayerChanged += OnLayerChanged;
-            BtnSmartSelect.Click += OnSmartSelectClick;
+            ToolPalette.ToolSelected += OnToolSelected;
             KeyDown += OnKeyDown;
+            Closing += OnClosing;
         }
 
-        private void SetupMenu()
+        private void OnClosing(object? sender, WindowClosingEventArgs e)
+        {
+            _samService?.Dispose();
+            _lamaService?.Dispose();
+            _layerService.Dispose();
+        }
+
+        private void SetupMenus()
         {
             var fileMenu = this.FindControl<MenuItem>("MenuFile")!;
             fileMenu.Items.Add(CreateMenuItem("Открыть...", OnOpenClick));
@@ -40,17 +50,54 @@ namespace Editor.App
             fileMenu.Items.Add(new Separator());
             fileMenu.Items.Add(CreateMenuItem("Выход", OnExitClick));
 
+            var editMenu = this.FindControl<MenuItem>("MenuEdit")!;
+            editMenu.Items.Add(CreateMenuItem("Отменить", OnUndoClick));
+            editMenu.Items.Add(CreateMenuItem("Повторить", OnRedoClick));
+            editMenu.Items.Add(new Separator());
+            editMenu.Items.Add(CreateMenuItem("Вырезать", OnCutClick));
+            editMenu.Items.Add(CreateMenuItem("Копировать", OnCopyClick));
+            editMenu.Items.Add(CreateMenuItem("Вставить", OnPasteClick));
+
             var viewMenu = this.FindControl<MenuItem>("MenuView")!;
             viewMenu.Items.Add(CreateMenuItem("Вписать в окно", OnFitToWindowClick));
             viewMenu.Items.Add(CreateMenuItem("Сбросить зум", OnResetZoomClick));
 
-            var correctionMenu = this.FindControl<MenuItem>("MenuCorrection")!;
-            correctionMenu.Items.Add(CreateMenuItem("Яркость/Контраст...", OnBrightnessContrastClick));
-            correctionMenu.Items.Add(new Separator());
-            correctionMenu.Items.Add(CreateMenuItem("Эрозия", OnErodeClick));
-            correctionMenu.Items.Add(CreateMenuItem("Дилатация", OnDilateClick));
-            correctionMenu.Items.Add(CreateMenuItem("Открытие", OnOpenMorphologyClick));
-            correctionMenu.Items.Add(CreateMenuItem("Закрытие", OnCloseMorphologyClick));
+            var imageMenu = this.FindControl<MenuItem>("MenuImage")!;
+            imageMenu.Items.Add(CreateMenuItem("Размер изображения...", OnImageSizeClick));
+            imageMenu.Items.Add(CreateMenuItem("Размер холста...", OnCanvasSizeClick));
+            imageMenu.Items.Add(new Separator());
+            imageMenu.Items.Add(CreateMenuItem("Повернуть вправо", OnRotateRightClick));
+            imageMenu.Items.Add(CreateMenuItem("Повернуть влево", OnRotateLeftClick));
+            imageMenu.Items.Add(CreateMenuItem("Отразить по горизонтали", OnFlipHorizontalClick));
+            imageMenu.Items.Add(CreateMenuItem("Отразить по вертикали", OnFlipVerticalClick));
+
+            var layerMenu = this.FindControl<MenuItem>("MenuLayer")!;
+            layerMenu.Items.Add(CreateMenuItem("Новый слой", OnNewLayerClick));
+            layerMenu.Items.Add(CreateMenuItem("Дублировать слой", OnDuplicateLayerClick));
+            layerMenu.Items.Add(CreateMenuItem("Удалить слой", OnDeleteLayerClick));
+            layerMenu.Items.Add(new Separator());
+            layerMenu.Items.Add(CreateMenuItem("Объединить все", OnFlattenClick));
+
+            var selectMenu = this.FindControl<MenuItem>("MenuSelect")!;
+            selectMenu.Items.Add(CreateMenuItem("Выделить все", OnSelectAllClick));
+            selectMenu.Items.Add(CreateMenuItem("Снять выделение", OnDeselectClick));
+            selectMenu.Items.Add(CreateMenuItem("Инвертировать выделение", OnInvertSelectionClick));
+
+            var filtersMenu = this.FindControl<MenuItem>("MenuFilters")!;
+            filtersMenu.Items.Add(CreateMenuItem("Яркость/Контраст...", OnBrightnessContrastClick));
+            filtersMenu.Items.Add(new Separator());
+            filtersMenu.Items.Add(CreateMenuItem("Эрозия", OnErodeClick));
+            filtersMenu.Items.Add(CreateMenuItem("Дилатация", OnDilateClick));
+            filtersMenu.Items.Add(CreateMenuItem("Открытие", OnOpenMorphologyClick));
+            filtersMenu.Items.Add(CreateMenuItem("Закрытие", OnCloseMorphologyClick));
+            filtersMenu.Items.Add(new Separator());
+            filtersMenu.Items.Add(CreateMenuItem("Размытие по Гауссу...", OnGaussianBlurClick));
+            filtersMenu.Items.Add(CreateMenuItem("Резкость...", OnSharpenClick));
+            filtersMenu.Items.Add(new Separator());
+            filtersMenu.Items.Add(CreateMenuItem("Удалить объект", OnRemoveObjectClick));
+
+            var helpMenu = this.FindControl<MenuItem>("MenuHelp")!;
+            helpMenu.Items.Add(CreateMenuItem("О программе", OnAboutClick));
         }
 
         private static MenuItem CreateMenuItem(string header, EventHandler<RoutedEventArgs> handler)
@@ -60,68 +107,90 @@ namespace Editor.App
             return item;
         }
 
+        #region File menu
+
         private async void OnOpenClick(object? sender, RoutedEventArgs e)
         {
-            var storage = GetTopLevel(this)?.StorageProvider;
-            if (storage is null)
-                return;
-
-            var files = await storage.OpenFilePickerAsync(new FilePickerOpenOptions
+            try
             {
-                Title = "Открыть изображение",
-                AllowMultiple = false,
-                FileTypeFilter = new[]
+                var storage = GetTopLevel(this)?.StorageProvider;
+                if (storage is null)
+                    return;
+
+                var files = await storage.OpenFilePickerAsync(new FilePickerOpenOptions
                 {
-                    new FilePickerFileType("Изображения")
+                    Title = "Открыть изображение",
+                    AllowMultiple = false,
+                    FileTypeFilter = new[]
                     {
-                        Patterns = FileService.SupportedExtensions
-                            .Select(ext => $"*{ext}")
-                            .ToArray()
+                        new FilePickerFileType("Изображения")
+                        {
+                            Patterns = FileService.SupportedExtensions
+                                .Select(ext => $"*{ext}")
+                                .ToArray()
+                        }
                     }
-                }
-            });
+                });
 
-            if (files.Count == 0)
-                return;
+                if (files.Count == 0)
+                    return;
 
-            var path = files[0].TryGetLocalPath();
-            if (path is null)
-                return;
+                var path = files[0].TryGetLocalPath();
+                if (path is null)
+                    return;
 
-            var bitmap = _fileService.OpenImage(path);
-            if (bitmap is null)
-                return;
+                var bitmap = _fileService.OpenImage(path);
+                if (bitmap is null)
+                    return;
 
-            _layerService.Dispose();
-            _layerService.Add(bitmap, Path.GetFileName(path));
+                _layerService.Dispose();
+                _layerService.Add(bitmap, Path.GetFileName(path));
 
-            Title = $"SemanticRasterEditor — {Path.GetFileName(path)}";
-            RefreshCanvas();
-            Layers.Refresh();
-            UpdateStatusBar();
-            EditorCanvas.FitToWindow();
+                Title = $"RasterEditor — {Path.GetFileName(path)}";
+                RefreshCanvas();
+                Layers.Refresh();
+                UpdateStatusBar();
+                UpdateDocumentTab();
+                EditorCanvas.FitToWindow();
+                UpdateRulers();
+            }
+            catch
+            {
+            }
         }
 
         private async void OnSaveClick(object? sender, RoutedEventArgs e)
         {
-            if (_layerService.Count == 0)
-                return;
-
-            var filePath = GetCurrentFilePath();
-            if (filePath is not null)
+            try
             {
-                using var composite = _layerService.Composite();
-                _fileService.SaveImage(composite, filePath);
-                UpdateTitle();
-                return;
-            }
+                if (_layerService.Count == 0)
+                    return;
 
-            await SaveAs();
+                var filePath = GetCurrentFilePath();
+                if (filePath is not null)
+                {
+                    using var composite = _layerService.Composite();
+                    _fileService.SaveImage(composite, filePath);
+                    UpdateTitle();
+                    return;
+                }
+
+                await SaveAs();
+            }
+            catch
+            {
+            }
         }
 
         private async void OnSaveAsClick(object? sender, RoutedEventArgs e)
         {
-            await SaveAs();
+            try
+            {
+                await SaveAs();
+            }
+            catch
+            {
+            }
         }
 
         private void OnExitClick(object? sender, RoutedEventArgs e)
@@ -129,37 +198,141 @@ namespace Editor.App
             Close();
         }
 
+        #endregion
+
+        #region Edit menu
+
+        private void OnUndoClick(object? sender, RoutedEventArgs e)
+        {
+        }
+
+        private void OnRedoClick(object? sender, RoutedEventArgs e)
+        {
+        }
+
+        private void OnCutClick(object? sender, RoutedEventArgs e)
+        {
+        }
+
+        private void OnCopyClick(object? sender, RoutedEventArgs e)
+        {
+        }
+
+        private void OnPasteClick(object? sender, RoutedEventArgs e)
+        {
+        }
+
+        #endregion
+
+        #region View menu
+
         private void OnFitToWindowClick(object? sender, RoutedEventArgs e)
         {
             EditorCanvas.FitToWindow();
             UpdateStatusBar();
+            UpdateRulers();
         }
 
         private void OnResetZoomClick(object? sender, RoutedEventArgs e)
         {
             EditorCanvas.ResetZoom();
             UpdateStatusBar();
+            UpdateRulers();
         }
+
+        #endregion
+
+        #region Image menu
+
+        private void OnImageSizeClick(object? sender, RoutedEventArgs e)
+        {
+        }
+
+        private void OnCanvasSizeClick(object? sender, RoutedEventArgs e)
+        {
+        }
+
+        private void OnRotateRightClick(object? sender, RoutedEventArgs e)
+        {
+        }
+
+        private void OnRotateLeftClick(object? sender, RoutedEventArgs e)
+        {
+        }
+
+        private void OnFlipHorizontalClick(object? sender, RoutedEventArgs e)
+        {
+        }
+
+        private void OnFlipVerticalClick(object? sender, RoutedEventArgs e)
+        {
+        }
+
+        #endregion
+
+        #region Layer menu
+
+        private void OnNewLayerClick(object? sender, RoutedEventArgs e)
+        {
+        }
+
+        private void OnDuplicateLayerClick(object? sender, RoutedEventArgs e)
+        {
+        }
+
+        private void OnDeleteLayerClick(object? sender, RoutedEventArgs e)
+        {
+        }
+
+        private void OnFlattenClick(object? sender, RoutedEventArgs e)
+        {
+        }
+
+        #endregion
+
+        #region Select menu
+
+        private void OnSelectAllClick(object? sender, RoutedEventArgs e)
+        {
+        }
+
+        private void OnDeselectClick(object? sender, RoutedEventArgs e)
+        {
+        }
+
+        private void OnInvertSelectionClick(object? sender, RoutedEventArgs e)
+        {
+        }
+
+        #endregion
+
+        #region Filters menu
 
         private async void OnBrightnessContrastClick(object? sender, RoutedEventArgs e)
         {
-            var active = _layerService.ActiveLayer;
-            if (active?.Bitmap is null)
-                return;
+            try
+            {
+                var active = _layerService.ActiveLayer;
+                if (active?.Bitmap is null)
+                    return;
 
-            var dialog = new FilterDialog();
-            var result = await dialog.ShowDialog<bool?>(this);
+                var dialog = new FilterDialog();
+                var result = await dialog.ShowDialog<bool?>(this);
 
-            if (result != true)
-                return;
+                if (result != true)
+                    return;
 
-            var newBitmap = _filterService.AdjustBrightness(active.Bitmap, dialog.Brightness);
-            var contrastBitmap = _filterService.AdjustContrast(newBitmap, dialog.Contrast);
-            newBitmap.Dispose();
+                var newBitmap = _filterService.AdjustBrightness(active.Bitmap, dialog.Brightness);
+                var contrastBitmap = _filterService.AdjustContrast(newBitmap, dialog.Contrast);
+                newBitmap.Dispose();
 
-            active.SetBitmap(contrastBitmap);
-            RefreshCanvas();
-            UpdateTitle();
+                active.SetBitmap(contrastBitmap);
+                RefreshCanvas();
+                UpdateTitle();
+            }
+            catch
+            {
+            }
         }
 
         private void OnErodeClick(object? sender, RoutedEventArgs e)
@@ -182,6 +355,51 @@ namespace Editor.App
             ApplyMorphology(MorphologyType.Close);
         }
 
+        private void OnGaussianBlurClick(object? sender, RoutedEventArgs e)
+        {
+        }
+
+        private void OnSharpenClick(object? sender, RoutedEventArgs e)
+        {
+        }
+
+        private void OnRemoveObjectClick(object? sender, RoutedEventArgs e)
+        {
+            try
+            {
+                var active = _layerService.ActiveLayer;
+                if (active?.Bitmap is null)
+                    return;
+
+                if (!active.HasMask)
+                    return;
+
+                EnsureLaMaService();
+                if (_lamaService is null)
+                    return;
+
+                using var mask = active.Mask!;
+                var result = _lamaService.Inpaint(active.Bitmap, mask);
+                active.SetBitmap(result);
+                active.ClearMask();
+                RefreshCanvas();
+                UpdateTitle();
+            }
+            catch
+            {
+            }
+        }
+
+        #endregion
+
+        #region Help menu
+
+        private void OnAboutClick(object? sender, RoutedEventArgs e)
+        {
+        }
+
+        #endregion
+
         private void ApplyMorphology(MorphologyType type)
         {
             var active = _layerService.ActiveLayer;
@@ -194,13 +412,18 @@ namespace Editor.App
             UpdateTitle();
         }
 
-        private void OnSmartSelectClick(object? sender, RoutedEventArgs e)
+        private void OnToolSelected(string tool)
         {
-            _smartSelectActive = !_smartSelectActive;
-            EditorCanvas.SmartSelectMode = _smartSelectActive;
-            BtnSmartSelect.Content = _smartSelectActive
-                ? "Выделение (SAM) [АКТИВНО]"
-                : "Выделение (SAM)";
+            if (tool == "SmartSelect")
+            {
+                _smartSelectActive = !_smartSelectActive;
+                EditorCanvas.SmartSelectMode = _smartSelectActive;
+            }
+            else
+            {
+                _smartSelectActive = false;
+                EditorCanvas.SmartSelectMode = false;
+            }
         }
 
         private void OnImageClicked(float pixelX, float pixelY)
@@ -237,6 +460,37 @@ namespace Editor.App
             {
                 _samService = null;
             }
+        }
+
+        private void EnsureLaMaService()
+        {
+            if (_lamaService is not null)
+                return;
+
+            var modelsDir = Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "Assets", "Models");
+            modelsDir = Path.GetFullPath(modelsDir);
+
+            if (!Directory.Exists(modelsDir))
+                return;
+
+            try
+            {
+                _lamaService = LaMaService.LoadFromDirectory(modelsDir);
+            }
+            catch
+            {
+                _lamaService = null;
+            }
+        }
+
+        private void OnCursorPositionChanged(float x, float y)
+        {
+            if (CursorPosText is not null)
+                CursorPosText.Text = $"X: {(int)x}  Y: {(int)y}";
+            if (RulerH is not null)
+                RulerH.CursorPosition = x;
+            if (RulerV is not null)
+                RulerV.CursorPosition = y;
         }
 
         private void OnLayerChanged()
@@ -281,18 +535,9 @@ namespace Editor.App
                 SuggestedFileName = Path.GetFileName(GetCurrentFilePath() ?? "image.png"),
                 FileTypeChoices = new[]
                 {
-                    new FilePickerFileType("PNG")
-                    {
-                        Patterns = new[] { "*.png" }
-                    },
-                    new FilePickerFileType("JPEG")
-                    {
-                        Patterns = new[] { "*.jpg", "*.jpeg" }
-                    },
-                    new FilePickerFileType("BMP")
-                    {
-                        Patterns = new[] { "*.bmp" }
-                    }
+                    new FilePickerFileType("PNG") { Patterns = new[] { "*.png" } },
+                    new FilePickerFileType("JPEG") { Patterns = new[] { "*.jpg", "*.jpeg" } },
+                    new FilePickerFileType("BMP") { Patterns = new[] { "*.bmp" } }
                 }
             });
 
@@ -310,8 +555,6 @@ namespace Editor.App
 
         private string? GetCurrentFilePath()
         {
-            if (_layerService.Count > 0 && _layerService.Layers[0].Bitmap is not null)
-                return null;
             return null;
         }
 
@@ -320,31 +563,68 @@ namespace Editor.App
             if (_layerService.Count == 0)
             {
                 EditorCanvas.SetImage(null);
+                Layers.Channels?.SetImage(null);
                 return;
             }
 
             using var composite = _layerService.Composite();
             EditorCanvas.SetImage(composite);
+            Layers.Channels?.SetImage(_layerService.ActiveLayer?.Bitmap);
             UpdateStatusBar();
+            UpdateDocumentTab();
         }
 
         private void OnZoomChanged(float zoom)
         {
             UpdateStatusBar();
+            UpdateDocumentTab();
+            UpdateRulers();
         }
 
         private void UpdateStatusBar()
         {
             var zoomPercent = (int)(EditorCanvas.Zoom * 100);
-            ZoomText.Text = $"{zoomPercent}%";
+            if (ZoomText is not null)
+                ZoomText.Text = $"{zoomPercent}%";
 
             if (_layerService.Count > 0 && _layerService.ActiveLayer?.Bitmap is not null)
             {
                 var bmp = _layerService.ActiveLayer.Bitmap;
-                SizeText.Text = $"{bmp.Width} × {bmp.Height}";
+                if (SizeText is not null)
+                    SizeText.Text = $"{bmp.Width} x {bmp.Height} px";
+                if (PpiText is not null)
+                    PpiText.Text = "RGB/8";
             }
             else
-                SizeText.Text = string.Empty;
+            {
+                if (SizeText is not null)
+                    SizeText.Text = string.Empty;
+                if (PpiText is not null)
+                    PpiText.Text = string.Empty;
+            }
+        }
+
+        private void UpdateDocumentTab()
+        {
+            var fileName = _layerService.Count > 0 && _layerService.Layers[0].Bitmap is not null
+                ? _layerService.Layers[0].Name
+                : "Без имени";
+
+            DocTab?.UpdateInfo(fileName, EditorCanvas.Zoom);
+        }
+
+        private void UpdateRulers()
+        {
+            if (RulerH is not null)
+            {
+                RulerH.Zoom = EditorCanvas.Zoom;
+                RulerH.Offset = EditorCanvas.PanOffset.X;
+            }
+            if (RulerV is not null)
+            {
+                RulerV.Zoom = EditorCanvas.Zoom;
+                RulerV.Offset = EditorCanvas.PanOffset.Y;
+            }
         }
 
         private void UpdateTitle()
@@ -353,7 +633,7 @@ namespace Editor.App
                 ? _layerService.Layers[0].Name
                 : "Без имени";
 
-            Title = $"SemanticRasterEditor — {fileName}";
+            Title = $"RasterEditor — {fileName}";
         }
     }
 }

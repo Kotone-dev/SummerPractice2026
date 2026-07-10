@@ -15,16 +15,22 @@ namespace Editor.Services
     {
         public SKBitmap AdjustBrightness(SKBitmap source, int value)
         {
+            if (source is null)
+                throw new ArgumentNullException(nameof(source));
+
             using var src = SkiaBitmapConverter.ToMat(source);
-            var dst = new Mat();
+            using var dst = new Mat();
             Cv2.ConvertScaleAbs(src, dst, 1.0, value);
             return SkiaBitmapConverter.ToBitmap(dst);
         }
 
         public SKBitmap AdjustContrast(SKBitmap source, int value)
         {
+            if (source is null)
+                throw new ArgumentNullException(nameof(source));
+
             using var src = SkiaBitmapConverter.ToMat(source);
-            var dst = new Mat();
+            using var dst = new Mat();
 
             double alpha = 1.0 + value / 100.0 * 2.0;
             alpha = Math.Clamp(alpha, 0.0, 3.0);
@@ -35,9 +41,12 @@ namespace Editor.Services
 
         public SKBitmap ApplyMorphology(SKBitmap source, MorphologyType type)
         {
+            if (source is null)
+                throw new ArgumentNullException(nameof(source));
+
             using var src = SkiaBitmapConverter.ToMat(source);
-            var dst = new Mat();
-            var kernel = Cv2.GetStructuringElement(MorphShapes.Rect, new OpenCvSharp.Size(3, 3));
+            using var dst = new Mat();
+            using var kernel = Cv2.GetStructuringElement(MorphShapes.Rect, new OpenCvSharp.Size(3, 3));
 
             switch (type)
             {
@@ -54,8 +63,6 @@ namespace Editor.Services
                     Cv2.MorphologyEx(src, dst, MorphTypes.Close, kernel);
                     break;
             }
-
-            kernel.Dispose();
 
             return SkiaBitmapConverter.ToBitmap(dst);
         }
