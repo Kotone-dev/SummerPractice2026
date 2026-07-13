@@ -1,4 +1,7 @@
+using System;
 using Avalonia.Controls;
+using Avalonia.Input;
+using Avalonia.Interactivity;
 using Avalonia.Threading;
 
 namespace Editor.App
@@ -7,16 +10,40 @@ namespace Editor.App
     {
         private const int MaxMessages = 100;
 
+        public event EventHandler<string>? TextSearchRequested;
+
         public AiChatPanel()
         {
             InitializeComponent();
+            BtnTextSearch.Click += OnTextSearchClick;
+            TextSearchInput.KeyDown += OnTextSearchKeyDown;
+        }
+
+        private void OnTextSearchClick(object? sender, RoutedEventArgs e)
+        {
+            SubmitTextSearch();
+        }
+
+        private void OnTextSearchKeyDown(object? sender, KeyEventArgs e)
+        {
+            if (e.Key == Key.Enter)
+                SubmitTextSearch();
+        }
+
+        private void SubmitTextSearch()
+        {
+            var query = TextSearchInput.Text?.Trim();
+            if (string.IsNullOrEmpty(query))
+                return;
+
+            TextSearchRequested?.Invoke(this, query);
         }
 
         public void ShowProgress(string message)
         {
             Dispatcher.UIThread.Post(() =>
             {
-                ProgressText.Text = $"● {message}...";
+                ProgressText.Text = $"\u25cf {message}...";
                 ProgressBorder.IsVisible = true;
             });
         }
