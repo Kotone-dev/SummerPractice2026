@@ -17,6 +17,7 @@ namespace Editor.App
         private readonly LayerService _layerService = new();
         private SamService? _samService;
         private LaMaService? _lamaService;
+        private TextSearchService? _textSearchService;
         private bool _smartSelectActive;
 
         public MainWindow()
@@ -31,12 +32,14 @@ namespace Editor.App
             ToolPalette.ToolSelected += OnToolSelected;
             KeyDown += OnKeyDown;
             Closing += OnClosing;
+            AiChat.TextSearchRequested += OnTextSearchRequested;
         }
 
         private void OnClosing(object? sender, WindowClosingEventArgs e)
         {
             _samService?.Dispose();
             _lamaService?.Dispose();
+            _textSearchService?.Dispose();
             _layerService.Dispose();
         }
 
@@ -480,6 +483,72 @@ namespace Editor.App
             catch
             {
                 _lamaService = null;
+            }
+        }
+
+        private void EnsureTextSearchService()
+        {
+            if (_textSearchService is not null)
+                return;
+
+            var modelsDir = Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "Assets", "Models");
+            modelsDir = Path.GetFullPath(modelsDir);
+
+            if (!Directory.Exists(modelsDir))
+                return;
+
+            try
+            {
+                _textSearchService = TextSearchService.LoadFromDirectory(modelsDir);
+            }
+            catch
+            {
+                _textSearchService = null;
+            }
+        }
+
+        private async void OnTextSearchRequested(object? sender, string query)
+        {
+            var active = _layerService.ActiveLayer;
+            if (active?.Bitmap is null)
+            {
+                AiChat.AddMessage("Нет загруженного изображения.");
+                return;
+            }
+
+            EnsureTextSearchService();
+            if (_textSearchService is null)
+            {
+                AiChat.AddMessage("Модели поиска не загружены. Проверьте папку Assets/Models.");
+                return;
+            }
+
+            AiChat.ShowProgress("Поиск объекта");
+            AiChat.AddMessage($"Ищу: \"{query}\"", true);
+
+            try
+            {
+                var bitmap = active.Bitmap;
+                var mask = await Task.Run(() => _textSearchService.Search(bitmap, query));
+
+                if (mask is null)
+                {
+                    AiChat.AddMessage("Объект не найден.");
+                }
+                else
+                {
+                    active.SetMask(mask);
+                    RefreshCanvas();
+                    AiChat.AddMessage("Объект найден. Маска применена.");
+                }
+            }
+            catch (Exception ex)
+            {
+                AiChat.AddMessage($"Ошибка: {ex.Message}");
+            }
+            finally
+            {
+                AiChat.HideProgress();
             }
         }
 
