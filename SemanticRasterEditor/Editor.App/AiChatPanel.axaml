@@ -21,6 +21,32 @@
             </Grid>
         </Border>
 
+        <!-- Text search section -->
+        <Border x:Name="TextSearchBorder" DockPanel.Dock="Bottom"
+                BorderBrush="#4A4A4A" BorderThickness="0,0,0,1" Padding="8,6">
+            <StackPanel Spacing="4">
+                <TextBlock Text="Поиск по тексту" FontSize="10" FontWeight="SemiBold"
+                           Foreground="#888888" />
+                <Grid ColumnDefinitions="*,Auto">
+                    <TextBox x:Name="TextSearchInput"
+                             Grid.Column="0"
+                             PlaceholderText="Описание объекта..."
+                             Background="#3A3F47"
+                             Foreground="#CCCCCC"
+                             BorderThickness="0"
+                             Height="26"
+                             VerticalContentAlignment="Center"
+                             Margin="0,0,6,0" />
+                    <Button x:Name="BtnTextSearch" Grid.Column="1"
+                            ToolTip.Tip="Найти объект"
+                            Padding="6,3" Background="#3A3F47"
+                            CornerRadius="3">
+                        <TextBlock Text="Найти" FontSize="11" Foreground="#5BA4CF" />
+                    </Button>
+                </Grid>
+            </StackPanel>
+        </Border>
+
         <!-- Chat messages area -->
         <ScrollViewer x:Name="ChatScroll" DockPanel.Dock="Bottom"
                       VerticalScrollBarVisibility="Auto" MaxHeight="300">
