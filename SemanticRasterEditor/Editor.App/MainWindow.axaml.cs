@@ -18,6 +18,7 @@ namespace Editor.App
         private SamService? _samService;
         private LaMaService? _lamaService;
         private TextSearchService? _textSearchService;
+        private CommandService? _commandService;
         private bool _smartSelectActive;
 
         public MainWindow()
@@ -33,6 +34,7 @@ namespace Editor.App
             KeyDown += OnKeyDown;
             Closing += OnClosing;
             AiChat.TextSearchRequested += OnTextSearchRequested;
+            AiChat.CommandRequested += OnCommandRequested;
         }
 
         private void OnClosing(object? sender, WindowClosingEventArgs e)
@@ -504,6 +506,61 @@ namespace Editor.App
             catch
             {
                 _textSearchService = null;
+            }
+        }
+
+        private void EnsureCommandService()
+        {
+            if (_commandService is not null)
+                return;
+
+            _commandService = new CommandService();
+        }
+
+        private void OnCommandRequested(object? sender, string commandText)
+        {
+            try
+            {
+                EnsureCommandService();
+                if (_commandService is null)
+                    return;
+
+                var result = CommandService.ParseAndExecute(
+                    commandText,
+                    _filterService,
+                    _layerService,
+                    removeObjectFunc: (image, mask) =>
+                    {
+                        EnsureLaMaService();
+                        if (_lamaService is null || image is null || mask is null)
+                            return null;
+
+                        return _lamaService.Inpaint(image, mask);
+                    },
+                    selectFunc: (image, x, y) =>
+                    {
+                        EnsureSamService();
+                        if (_samService is null)
+                            return null;
+
+                        return _samService.Predict(image, x, y);
+                    },
+                    textSearchFunc: (image, query) =>
+                    {
+                        EnsureTextSearchService();
+                        if (_textSearchService is null)
+                            return null;
+
+                        return _textSearchService.Search(image, query);
+                    });
+
+                AiChat.AddMessage(result.Message, !result.Success);
+                if (result.Success)
+                    RefreshCanvas();
+            }
+            catch (Exception ex)
+            {
+                AiChat.AddMessage($"Ошибка: {ex.Message}", true);
             }
         }
 
