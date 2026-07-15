@@ -11,12 +11,15 @@ namespace Editor.App
         private const int MaxMessages = 100;
 
         public event EventHandler<string>? TextSearchRequested;
+        public event EventHandler<string>? CommandRequested;
 
         public AiChatPanel()
         {
             InitializeComponent();
             BtnTextSearch.Click += OnTextSearchClick;
             TextSearchInput.KeyDown += OnTextSearchKeyDown;
+            BtnExecute.Click += OnExecuteClick;
+            CommandInput.KeyDown += OnCommandKeyDown;
         }
 
         private void OnTextSearchClick(object? sender, RoutedEventArgs e)
@@ -37,6 +40,27 @@ namespace Editor.App
                 return;
 
             TextSearchRequested?.Invoke(this, query);
+        }
+
+        private void OnExecuteClick(object? sender, RoutedEventArgs e)
+        {
+            SubmitCommand();
+        }
+
+        private void OnCommandKeyDown(object? sender, KeyEventArgs e)
+        {
+            if (e.Key == Key.Enter)
+                SubmitCommand();
+        }
+
+        private void SubmitCommand()
+        {
+            var command = CommandInput.Text?.Trim();
+            if (string.IsNullOrEmpty(command))
+                return;
+
+            CommandRequested?.Invoke(this, command);
+            CommandInput.Text = string.Empty;
         }
 
         public void ShowProgress(string message)
