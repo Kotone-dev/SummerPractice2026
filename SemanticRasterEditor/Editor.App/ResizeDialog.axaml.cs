@@ -6,6 +6,7 @@ namespace Editor.App
 {
     public partial class ResizeDialog : Window
     {
+        private bool _isUpdating;
         public int NewWidth { get; private set; }
         public int NewHeight { get; private set; }
         public bool DialogResult { get; private set; }
@@ -16,8 +17,20 @@ namespace Editor.App
             WidthBox.Text = currentWidth.ToString();
             HeightBox.Text = currentHeight.ToString();
 
-            WidthBox.TextChanged += (_, _) => UpdateHeightIfLocked(currentWidth, currentHeight);
-            HeightBox.TextChanged += (_, _) => UpdateWidthIfLocked(currentWidth, currentHeight);
+            WidthBox.TextChanged += (_, _) =>
+            {
+                if (_isUpdating) return;
+                _isUpdating = true;
+                UpdateHeightIfLocked(currentWidth, currentHeight);
+                _isUpdating = false;
+            };
+            HeightBox.TextChanged += (_, _) =>
+            {
+                if (_isUpdating) return;
+                _isUpdating = true;
+                UpdateWidthIfLocked(currentWidth, currentHeight);
+                _isUpdating = false;
+            };
 
             BtnOk.Click += (_, _) =>
             {

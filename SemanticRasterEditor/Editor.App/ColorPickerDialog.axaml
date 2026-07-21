@@ -42,7 +42,7 @@
             <Button Content="Отмена" Width="90" Height="28" x:Name="BtnCancel"
                     Background="{StaticResource PanelBackgroundBrush}"
                     Foreground="{StaticResource TextPrimaryBrush}" />
-            <Button Content="OK" Width="90" Height="28" x:Name="BtnOk"
+            <Button Content="Применить" Width="90" Height="28" x:Name="BtnOk"
                     Background="{StaticResource AccentBrush}"
                     Foreground="White" />
         </StackPanel>
