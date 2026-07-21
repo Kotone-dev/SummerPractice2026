@@ -8,22 +8,18 @@
                   HorizontalScrollBarVisibility="Disabled">
         <StackPanel Spacing="0">
 
-            <!-- ═══ Move (V) ═══ -->
             <Button x:Name="BtnMove" Classes="tool-btn"
                     ToolTip.Tip="Перемещение (V)"
-                    Height="36" Padding="0" Background="Transparent"
-                    BorderThickness="0">
+                    Height="36" Padding="0">
                 <Path Data="M12,2 L12,22 M2,12 L22,12 M12,2 L8,6 M12,2 L16,6 M12,22 L8,18 M12,22 L16,18 M2,12 L6,8 M2,12 L6,16 M22,12 L18,8 M22,12 L18,16"
                       Stroke="{StaticResource TextSecondaryBrush}"
                       StrokeThickness="1.5" Width="18" Height="18"
                       Stretch="Uniform" />
             </Button>
 
-            <!-- ═══ Selection group ═══ -->
             <Button x:Name="BtnMarquee" Classes="tool-btn"
                     ToolTip.Tip="Прямоугольное выделение (M)"
-                    Height="36" Padding="0" Background="Transparent"
-                    BorderThickness="0">
+                    Height="36" Padding="0">
                 <Path Data="M3,3 L21,3 L21,21 L3,21 Z"
                       Stroke="{StaticResource TextSecondaryBrush}"
                       StrokeThickness="1.5" StrokeDashArray="4,2"
@@ -31,8 +27,7 @@
             </Button>
             <Button x:Name="BtnLasso" Classes="tool-btn"
                     ToolTip.Tip="Лассо (L)"
-                    Height="36" Padding="0" Background="Transparent"
-                    BorderThickness="0">
+                    Height="36" Padding="0">
                 <Path Data="M8,20 C4,18 2,14 3,10 C4,6 8,3 12,3 C16,3 20,5 21,9 C22,13 20,16 17,18"
                       Stroke="{StaticResource TextSecondaryBrush}"
                       StrokeThickness="1.5" Width="18" Height="18"
@@ -41,11 +36,9 @@
 
             <Border Background="{StaticResource SeparatorBrushCustom}" Height="1" Margin="8,4" />
 
-            <!-- ═══ Brush group ═══ -->
             <Button x:Name="BtnBrush" Classes="tool-btn"
                     ToolTip.Tip="Кисть (B)"
-                    Height="36" Padding="0" Background="Transparent"
-                    BorderThickness="0">
+                    Height="36" Padding="0">
                 <Path Data="M20,2 L8,14 L6,18 L2,22 L6,18 L10,16 L22,4 Z M8,14 L10,16"
                       Stroke="{StaticResource TextSecondaryBrush}"
                       StrokeThickness="1.5" Width="18" Height="18"
@@ -53,34 +46,16 @@
             </Button>
             <Button x:Name="BtnEraser" Classes="tool-btn"
                     ToolTip.Tip="Ластик (E)"
-                    Height="36" Padding="0" Background="Transparent"
-                    BorderThickness="0">
+                    Height="36" Padding="0">
                 <Path Data="M9,22 L2,15 L11,6 L20,15 L13,22 Z M9,22 L13,22 M2,15 L20,15 M11,6 L9,2 L20,15"
                       Stroke="{StaticResource TextSecondaryBrush}"
                       StrokeThickness="1.5" Width="18" Height="18"
                       Stretch="Uniform" Fill="Transparent" />
             </Button>
 
-            <Border Background="{StaticResource SeparatorBrushCustom}" Height="1" Margin="8,4" />
-
-            <!-- ═══ Fill group ═══ -->
-            <Button x:Name="BtnFill" Classes="tool-btn"
-                    ToolTip.Tip="Заливка (G)"
-                    Height="36" Padding="0" Background="Transparent"
-                    BorderThickness="0">
-                <Path Data="M5,17 L12,4 L19,17 Z M15,17 C17,19 19,21 19,22 C19,23 17,24 15,22 C13,24 11,23 11,22 C11,21 13,19 15,17 Z"
-                      Stroke="{StaticResource TextSecondaryBrush}"
-                      StrokeThickness="1.5" Width="18" Height="18"
-                      Stretch="Uniform" Fill="Transparent" />
-            </Button>
-
-            <Border Background="{StaticResource SeparatorBrushCustom}" Height="1" Margin="8,4" />
-
-            <!-- ═══ Text group ═══ -->
             <Button x:Name="BtnText" Classes="tool-btn"
                     ToolTip.Tip="Текст (T)"
-                    Height="36" Padding="0" Background="Transparent"
-                    BorderThickness="0">
+                    Height="36" Padding="0">
                 <Path Data="M5,4 L19,4 M12,4 L12,21 M8,21 L16,21"
                       Stroke="{StaticResource TextSecondaryBrush}"
                       StrokeThickness="1.5" Width="18" Height="18"
@@ -88,8 +63,7 @@
             </Button>
             <Button x:Name="BtnEyedropper" Classes="tool-btn"
                     ToolTip.Tip="Пипетка (I)"
-                    Height="36" Padding="0" Background="Transparent"
-                    BorderThickness="0">
+                    Height="36" Padding="0">
                 <Path Data="M18,2 L22,6 L10,18 L6,18 L6,14 Z M15,5 L19,9"
                       Stroke="{StaticResource TextSecondaryBrush}"
                       StrokeThickness="1.5" Width="18" Height="18"
@@ -98,11 +72,9 @@
 
             <Border Background="{StaticResource SeparatorBrushCustom}" Height="1" Margin="8,4" />
 
-            <!-- ═══ Crop group ═══ -->
             <Button x:Name="BtnCrop" Classes="tool-btn"
                     ToolTip.Tip="Кадрирование (C)"
-                    Height="36" Padding="0" Background="Transparent"
-                    BorderThickness="0">
+                    Height="36" Padding="0">
                 <Path Data="M6,2 L6,18 L22,18 M2,6 L18,6 L18,22"
                       Stroke="{StaticResource TextSecondaryBrush}"
                       StrokeThickness="1.5" Width="18" Height="18"
@@ -111,11 +83,9 @@
 
             <Border Background="{StaticResource SeparatorBrushCustom}" Height="1" Margin="8,4" />
 
-            <!-- ═══ Navigation group ═══ -->
             <Button x:Name="BtnHand" Classes="tool-btn"
                     ToolTip.Tip="Рука (H)"
-                    Height="36" Padding="0" Background="Transparent"
-                    BorderThickness="0">
+                    Height="36" Padding="0">
                 <Path Data="M12,2 L12,14 M8,6 L8,12 M16,8 L16,14 M4,10 L4,14 C4,18 8,22 12,22 C16,22 20,18 20,14 L20,10"
                       Stroke="{StaticResource TextSecondaryBrush}"
                       StrokeThickness="1.5" Width="18" Height="18"
@@ -123,8 +93,7 @@
             </Button>
             <Button x:Name="BtnZoom" Classes="tool-btn"
                     ToolTip.Tip="Масштаб (Z)"
-                    Height="36" Padding="0" Background="Transparent"
-                    BorderThickness="0">
+                    Height="36" Padding="0">
                 <Path Data="M10,10 L16,16 M10,10 C6,10 3,13 3,17 C3,21 6,24 10,24 C14,24 17,21 17,17 C17,13 14,10 10,10 Z M21,21 L24,24"
                       Stroke="{StaticResource TextSecondaryBrush}"
                       StrokeThickness="1.5" Width="18" Height="18"
@@ -133,11 +102,9 @@
 
             <Border Background="{StaticResource SeparatorBrushCustom}" Height="1" Margin="8,4" />
 
-            <!-- ═══ SAM Smart Select ═══ -->
             <Button x:Name="BtnSmartSelect" Classes="tool-btn"
                     ToolTip.Tip="Умное выделение (SAM)"
-                    Height="36" Padding="0" Background="Transparent"
-                    BorderThickness="0">
+                    Height="36" Padding="0">
                 <Path Data="M12,2 C7,2 3,6 3,11 C3,16 7,20 12,20 C14,20 16,19 18,18 L22,22 L18,18 C20,16 21,13 21,11 C21,6 17,2 12,2 Z M12,8 C13,8 14,9 14,10 C14,11 13,12 12,12 C11,12 10,11 10,10 C10,9 11,8 12,8 Z"
                       Stroke="{StaticResource AccentBrush}"
                       StrokeThickness="1.5" Width="18" Height="18"
@@ -147,25 +114,24 @@
     </ScrollViewer>
 
     <UserControl.Styles>
-        <!-- All tool buttons: centered content -->
         <Style Selector="Button.tool-btn">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderBrush" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="0" />
             <Setter Property="HorizontalContentAlignment" Value="Center" />
             <Setter Property="HorizontalAlignment" Value="Stretch" />
         </Style>
 
-        <!-- Hover: subtle background -->
         <Style Selector="Button.tool-btn:pointerover">
             <Setter Property="Background" Value="{StaticResource ToolHoverBrush}" />
         </Style>
 
-        <!-- Selected: blue left stripe + accent background -->
         <Style Selector="Button.tool-btn.selected">
             <Setter Property="Background" Value="{StaticResource ToolSelectedBrush}" />
             <Setter Property="BorderBrush" Value="{StaticResource AccentBrush}" />
             <Setter Property="BorderThickness" Value="3,0,0,0" />
         </Style>
 
-        <!-- Selected hover -->
         <Style Selector="Button.tool-btn.selected:pointerover">
             <Setter Property="Background" Value="{StaticResource AccentSubtleBrush}" />
         </Style>

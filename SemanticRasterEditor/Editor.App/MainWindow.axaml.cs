@@ -6,7 +6,6 @@ using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Platform.Storage;
-using Avalonia.Threading;
 using Editor.Services;
 
 namespace Editor.App
@@ -17,11 +16,7 @@ namespace Editor.App
         private readonly ImageFilterService _filterService = new();
         private readonly LayerService _layerService = new();
         private readonly ImageHistoryService _historyService = new();
-        private SamService? _samService;
-        private LaMaService? _lamaService;
-        private TextSearchService? _textSearchService;
         private string? _currentFilePath;
-        private bool _smartSelectActive;
         private bool _isModified;
 
         public MainWindow()
@@ -32,10 +27,10 @@ namespace Editor.App
             EditorCanvas.LayerService = _layerService;
             EditorCanvas.FilterService = _filterService;
             EditorCanvas.ZoomChanged += OnZoomChanged;
-            EditorCanvas.ClickOnImage += OnImageClicked;
             EditorCanvas.CursorPositionChanged += OnCursorPositionChanged;
             EditorCanvas.BeforeImageModified += OnBeforeImageModified;
             EditorCanvas.ImageModified += OnCanvasImageModified;
+            EditorCanvas.LayerStateChanged += () => Layers.Refresh();
 
             if (ToolOptions is not null)
             {
@@ -52,6 +47,8 @@ namespace Editor.App
 
             Layers.Bind(_layerService);
             Layers.LayerChanged += OnLayerChanged;
+            if (Layers.Channels is not null)
+                Layers.Channels.ChannelVisibilityChanged += OnChannelVisibilityChanged;
             ToolPalette.ToolSelected += OnToolSelected;
             KeyDown += OnKeyDown;
             Closing += OnClosing;
@@ -157,9 +154,7 @@ namespace Editor.App
                 }
             }
 
-            _samService?.Dispose();
-            _lamaService?.Dispose();
-            _textSearchService?.Dispose();
+            EditorCanvas.ClipboardBitmap?.Dispose();
             _historyService.Dispose();
             _layerService.Dispose();
         }
@@ -217,8 +212,6 @@ namespace Editor.App
             filtersMenu.Items.Add(new Separator());
             filtersMenu.Items.Add(CreateMenuItem("Размытие по Гауссу...", OnGaussianBlurClick, false));
             filtersMenu.Items.Add(CreateMenuItem("Резкость", OnSharpenClick, false));
-            filtersMenu.Items.Add(new Separator());
-            filtersMenu.Items.Add(CreateMenuItem("Удалить объект (LaMa)", OnRemoveObjectClick, false));
 
             var helpMenu = this.FindControl<MenuItem>("MenuHelp")!;
             helpMenu.Items.Add(CreateMenuItem("О программе", OnAboutClick));
@@ -267,8 +260,12 @@ namespace Editor.App
 
         private async Task OpenFile(string path)
         {
-            var bitmap = _fileService.OpenImage(path);
-            if (bitmap is null) return;
+            var swTotal = System.Diagnostics.Stopwatch.StartNew();
+
+            var sw = System.Diagnostics.Stopwatch.StartNew();
+            var bitmap = await Task.Run(() => _fileService.OpenImage(path));
+            sw.Stop();
+            if (bitmap is null) { StatusText.Text = ""; return; }
 
             _layerService.Dispose();
             _historyService.Clear();
@@ -277,21 +274,22 @@ namespace Editor.App
             _isModified = false;
 
             UpdateTitle();
+            EditorCanvas.MarkFitToWindow();
+            var swCanvas = System.Diagnostics.Stopwatch.StartNew();
             RefreshCanvas();
+            swCanvas.Stop();
+            var swLayers = System.Diagnostics.Stopwatch.StartNew();
             Layers.Refresh();
+            swLayers.Stop();
             UpdateStatusBar();
             UpdateDocumentTab();
             UpdateMenuStates();
-            void FitAfterLayout(object? sender, EventArgs e)
-            {
-                EditorCanvas.LayoutUpdated -= FitAfterLayout;
-                if (EditorCanvas.Bounds.Width > 0 && EditorCanvas.Bounds.Height > 0)
-                {
-                    EditorCanvas.FitToWindow();
-                    UpdateRulers();
-                }
-            }
-            EditorCanvas.LayoutUpdated += FitAfterLayout;
+
+            swTotal.Stop();
+            System.Diagnostics.Debug.WriteLine(
+                $"[OpenFile] Total={swTotal.ElapsedMilliseconds}ms | Decode={sw.ElapsedMilliseconds}ms | " +
+                $"RefreshCanvas={swCanvas.ElapsedMilliseconds}ms | Layers={swLayers.ElapsedMilliseconds}ms | " +
+                $"Size={bitmap.Width}x{bitmap.Height}");
         }
 
         private async void OnSaveClick(object? sender, RoutedEventArgs e)
@@ -312,6 +310,7 @@ namespace Editor.App
             }
             catch (Exception ex)
             {
+                System.Diagnostics.Debug.WriteLine($"Save error: {ex}");
                 StatusText.Text = $"Ошибка при сохранении: {ex.Message}";
             }
         }
@@ -319,7 +318,11 @@ namespace Editor.App
         private async void OnSaveAsClick(object? sender, RoutedEventArgs e)
         {
             try { await SaveAs(); }
-            catch (Exception ex) { StatusText.Text = $"Ошибка при сохранении: {ex.Message}"; }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"SaveAs error: {ex}");
+                StatusText.Text = $"Ошибка при сохранении: {ex.Message}";
+            }
         }
 
         private void OnExitClick(object? sender, RoutedEventArgs e) => Close();
@@ -569,7 +572,7 @@ namespace Editor.App
 
         private void OnDeleteLayerClick(object? sender, RoutedEventArgs e)
         {
-            if (_layerService.Count <= 1) return;
+            if (_layerService.Count == 0) return;
             _layerService.Remove(_layerService.ActiveIndex);
             Layers.Refresh();
             RefreshCanvas();
@@ -606,32 +609,42 @@ namespace Editor.App
                 var active = _layerService.ActiveLayer;
                 if (active?.Bitmap is null) return;
 
-                var dialog = new FilterDialog();
-                var result = await dialog.ShowDialog<bool?>(this);
-                if (result != true) return;
+                var dialog = new FilterDialog(active.Bitmap, _filterService);
+                await dialog.ShowDialog(this);
+                if (!dialog.DialogResult) return;
 
                 _historyService.PushState(active.Bitmap);
-                var newBitmap = _filterService.AdjustBrightness(active.Bitmap, dialog.Brightness);
-                var contrastBitmap = _filterService.AdjustContrast(newBitmap, dialog.Contrast);
-                newBitmap.Dispose();
-                active.SetBitmap(contrastBitmap);
+                var brightBitmap = _filterService.AdjustBrightness(active.Bitmap, dialog.Brightness);
+                var resultBitmap = _filterService.AdjustContrast(brightBitmap, dialog.Contrast);
+                brightBitmap.Dispose();
+                active.SetBitmap(resultBitmap);
                 _isModified = true;
                 RefreshCanvas();
                 UpdateTitle();
                 UpdateMenuStates();
             }
-            catch (Exception ex) { StatusText.Text = $"Ошибка при применении фильтра: {ex.Message}"; }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Filter error: {ex}");
+                StatusText.Text = $"Ошибка при применении фильтра: {ex.Message}";
+            }
         }
 
-        private void OnErodeClick(object? sender, RoutedEventArgs e) => ApplyMorphology(MorphologyType.Erode);
-        private void OnDilateClick(object? sender, RoutedEventArgs e) => ApplyMorphology(MorphologyType.Dilate);
-        private void OnOpenMorphologyClick(object? sender, RoutedEventArgs e) => ApplyMorphology(MorphologyType.Open);
-        private void OnCloseMorphologyClick(object? sender, RoutedEventArgs e) => ApplyMorphology(MorphologyType.Close);
+        private async void OnErodeClick(object? sender, RoutedEventArgs e) => await ApplyMorphologyAsync(MorphologyType.Erode, "Эрозия");
+        private async void OnDilateClick(object? sender, RoutedEventArgs e) => await ApplyMorphologyAsync(MorphologyType.Dilate, "Дилатация");
+        private async void OnOpenMorphologyClick(object? sender, RoutedEventArgs e) => await ApplyMorphologyAsync(MorphologyType.Open, "Открытие");
+        private async void OnCloseMorphologyClick(object? sender, RoutedEventArgs e) => await ApplyMorphologyAsync(MorphologyType.Close, "Закрытие");
 
-        private void ApplyMorphology(MorphologyType type)
+        private async Task ApplyMorphologyAsync(MorphologyType type, string title)
         {
             var active = _layerService.ActiveLayer;
             if (active?.Bitmap is null) return;
+
+            var dialog = new FilterPreviewDialog(active.Bitmap,
+                bmp => _filterService.ApplyMorphology(bmp, type), title);
+            await dialog.ShowDialog(this);
+            if (!dialog.DialogResult) return;
+
             _historyService.PushState(active.Bitmap);
             var newBitmap = _filterService.ApplyMorphology(active.Bitmap, type);
             active.SetBitmap(newBitmap);
@@ -648,7 +661,7 @@ namespace Editor.App
                 var active = _layerService.ActiveLayer;
                 if (active?.Bitmap is null) return;
 
-                var dialog = new GaussianBlurDialog();
+                var dialog = new GaussianBlurDialog(active.Bitmap, _filterService);
                 await dialog.ShowDialog(this);
                 if (!dialog.DialogResult) return;
 
@@ -660,15 +673,25 @@ namespace Editor.App
                 UpdateTitle();
                 UpdateMenuStates();
             }
-            catch (Exception ex) { StatusText.Text = $"Ошибка: {ex.Message}"; }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"GaussianBlur error: {ex}");
+                StatusText.Text = $"Ошибка: {ex.Message}";
+            }
         }
 
-        private void OnSharpenClick(object? sender, RoutedEventArgs e)
+        private async void OnSharpenClick(object? sender, RoutedEventArgs e)
         {
             try
             {
                 var active = _layerService.ActiveLayer;
                 if (active?.Bitmap is null) return;
+
+                var dialog = new FilterPreviewDialog(active.Bitmap,
+                    bmp => _filterService.ApplySharpen(bmp), "Резкость");
+                await dialog.ShowDialog(this);
+                if (!dialog.DialogResult) return;
+
                 _historyService.PushState(active.Bitmap);
                 var result = _filterService.ApplySharpen(active.Bitmap);
                 active.SetBitmap(result);
@@ -677,32 +700,11 @@ namespace Editor.App
                 UpdateTitle();
                 UpdateMenuStates();
             }
-            catch (Exception ex) { StatusText.Text = $"Ошибка: {ex.Message}"; }
-        }
-
-        private async void OnRemoveObjectClick(object? sender, RoutedEventArgs e)
-        {
-            try
+            catch (Exception ex)
             {
-                var active = _layerService.ActiveLayer;
-                if (active?.Bitmap is null || !active.HasMask) return;
-
-                StatusText.Text = "Загрузка модели LaMa...";
-                EnsureLaMaService();
-                if (_lamaService is null) return;
-
-                var mask = active.Mask!;
-                var result = await Task.Run(() => _lamaService.Inpaint(active.Bitmap, mask));
-                _historyService.PushState(active.Bitmap);
-                active.SetBitmap(result);
-                active.ClearMask();
-                _isModified = true;
-                RefreshCanvas();
-                UpdateTitle();
-                UpdateMenuStates();
-                StatusText.Text = string.Empty;
+                System.Diagnostics.Debug.WriteLine($"Sharpen error: {ex}");
+                StatusText.Text = $"Ошибка: {ex.Message}";
             }
-            catch (Exception ex) { StatusText.Text = $"Ошибка: {ex.Message}"; }
         }
 
         #endregion
@@ -738,7 +740,7 @@ namespace Editor.App
             panel.Children.Add(new TextBlock
             {
                 Text = "Растровый редактор с интеллектуальным анализом изображений.\n" +
-                       "Технологии: .NET 9, Avalonia, SkiaSharp, OpenCV, ONNX Runtime",
+                       "Технологии: .NET 9, Avalonia, SkiaSharp, OpenCV",
                 Foreground = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse("#B5B5B5")),
                 FontSize = 12,
                 TextWrapping = Avalonia.Media.TextWrapping.Wrap
@@ -766,17 +768,6 @@ namespace Editor.App
 
         private void OnToolSelected(string tool)
         {
-            if (tool == "SmartSelect")
-            {
-                _smartSelectActive = !_smartSelectActive;
-                EditorCanvas.SmartSelectMode = _smartSelectActive;
-            }
-            else
-            {
-                _smartSelectActive = false;
-                EditorCanvas.SmartSelectMode = false;
-            }
-
             EditorCanvas.CurrentTool = tool;
             EditorCanvas.SetToolCursor();
 
@@ -788,31 +779,15 @@ namespace Editor.App
             }
         }
 
-        private async void OnImageClicked(float pixelX, float pixelY)
-        {
-            var active = _layerService.ActiveLayer;
-            if (active?.Bitmap is null) return;
-
-            StatusText.Text = "Выделение через SAM...";
-            EnsureSamService();
-            if (_samService is null) { StatusText.Text = string.Empty; return; }
-
-            try
-            {
-                var mask = await Task.Run(() => _samService.Predict(active.Bitmap, pixelX, pixelY));
-                _historyService.PushState(active.Bitmap);
-                active.SetMask(mask);
-                _isModified = true;
-                RefreshCanvas();
-                StatusText.Text = string.Empty;
-            }
-            catch (Exception ex) { StatusText.Text = $"Ошибка выделения: {ex.Message}"; }
-        }
-
         private void OnLayerChanged()
         {
             RefreshCanvas();
             UpdateMenuStates();
+        }
+
+        private void OnChannelVisibilityChanged()
+        {
+            RefreshCanvas();
         }
 
         private void OnCanvasImageModified()
@@ -868,12 +843,10 @@ namespace Editor.App
             {
                 if (e.Key == Key.Escape)
                 {
-                    if (EditorCanvas.CurrentTool == "Crop")
-                    {
-                        EditorCanvas.CurrentTool = "Move";
-                        ToolPalette.SelectTool("Move");
-                    }
                     EditorCanvas.DeselectAll();
+                    EditorCanvas.CurrentTool = "Hand";
+                    ToolPalette.SelectTool("Hand");
+                    EditorCanvas.SetToolCursor();
                     e.Handled = true;
                 }
                 else if (e.Key == Key.Delete)
@@ -886,7 +859,7 @@ namespace Editor.App
                     var tool = e.Key switch
                     {
                         Key.V => "Move", Key.M => "Marquee", Key.L => "Lasso",
-                        Key.B => "Brush", Key.E => "Eraser", Key.G => "Fill",
+                        Key.B => "Brush", Key.E => "Eraser",
                         Key.T => "Text", Key.I => "Eyedropper", Key.C => "Crop",
                         Key.H => "Hand", Key.Z => "Zoom", _ => null
                     };
@@ -899,26 +872,6 @@ namespace Editor.App
 
         #region Helpers
 
-        private static string? GetModelsDir()
-        {
-            var dir = Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "Assets", "Models");
-            dir = Path.GetFullPath(dir);
-            return Directory.Exists(dir) ? dir : null;
-        }
-
-        private T? EnsureService<T>(T? field, Func<string, T> factory, string displayName) where T : class
-        {
-            if (field is not null) return field;
-            var modelsDir = GetModelsDir();
-            if (modelsDir is null) return null;
-            try { return factory(modelsDir); }
-            catch (Exception ex) { StatusText.Text = $"Не удалось загрузить {displayName}: {ex.Message}"; return null; }
-        }
-
-        private void EnsureSamService() => _samService = EnsureService(_samService, SamService.LoadFromDirectory, "модель SAM");
-        private void EnsureLaMaService() => _lamaService = EnsureService(_lamaService, LaMaService.LoadFromDirectory, "модель LaMa");
-        private void EnsureTextSearchService() => _textSearchService = EnsureService(_textSearchService, TextSearchService.LoadFromDirectory, "модели поиска");
-
         private void RefreshCanvas()
         {
             if (_layerService.Count == 0)
@@ -927,8 +880,55 @@ namespace Editor.App
                 Layers.Channels?.SetImage(null);
                 return;
             }
+
+            var active = _layerService.ActiveLayer;
+
+            if (_layerService.Count == 1 && active?.Bitmap is not null &&
+                !active.HasMask && active.Opacity >= 1f)
+            {
+                if (Layers.Channels is not null)
+                {
+                    var vis = Layers.Channels.ChannelVisibility;
+                    if (vis[0] && vis[1] && vis[2] && vis[3] && vis[4])
+                    {
+                        EditorCanvas.SetImage(active.Bitmap);
+                        Layers.Channels.SetImage(active.Bitmap);
+                        UpdateStatusBar();
+                        UpdateDocumentTab();
+                        return;
+                    }
+                }
+                else
+                {
+                    EditorCanvas.SetImage(active.Bitmap);
+                    Layers.Channels?.SetImage(active.Bitmap);
+                    UpdateStatusBar();
+                    UpdateDocumentTab();
+                    return;
+                }
+            }
+
             using var composite = _layerService.Composite();
-            EditorCanvas.SetImage(composite);
+
+            if (Layers.Channels is not null)
+            {
+                var visibility = Layers.Channels.ChannelVisibility;
+                bool hasHidden = !visibility[0] || !visibility[1] || !visibility[2] || !visibility[3] || !visibility[4];
+                if (hasHidden)
+                {
+                    using var filtered = CanvasControl.ApplyChannelFilter(composite, visibility);
+                    EditorCanvas.SetImage(filtered);
+                }
+                else
+                {
+                    EditorCanvas.SetImage(composite);
+                }
+            }
+            else
+            {
+                EditorCanvas.SetImage(composite);
+            }
+
             Layers.Channels?.SetImage(_layerService.ActiveLayer?.Bitmap);
             UpdateStatusBar();
             UpdateDocumentTab();

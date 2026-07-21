@@ -2,7 +2,6 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
 
     <Styles.Resources>
-        <!-- Backgrounds (deepest → lightest) -->
         <Color x:Key="WindowBgColor">#1B1E22</Color>
         <Color x:Key="ToolbarBgColor">#23262B</Color>
         <Color x:Key="PanelBgColor">#2A2D32</Color>
@@ -11,51 +10,39 @@
         <Color x:Key="ControlHoverColor">#43484F</Color>
         <Color x:Key="ControlPressedColor">#4C525A</Color>
 
-        <!-- Borders -->
         <Color x:Key="BorderColor">#3E4249</Color>
         <Color x:Key="BorderLightColor">#4A4E55</Color>
         <Color x:Key="FocusBorderColor">#2A86E8</Color>
 
-        <!-- Accent -->
         <Color x:Key="AccentColor">#2A86E8</Color>
         <Color x:Key="AccentHoverColor">#3A96F8</Color>
         <Color x:Key="AccentPressedColor">#1A76D8</Color>
         <Color x:Key="AccentSubtleColor">#1E3A5A</Color>
 
-        <!-- Text -->
         <Color x:Key="TextPrimaryColor">#F2F2F2</Color>
         <Color x:Key="TextSecondaryColor">#B5B5B5</Color>
         <Color x:Key="TextTertiaryColor">#7A7A7A</Color>
         <Color x:Key="TextDisabledColor">#555555</Color>
+        <Color x:Key="TextErrorColor">#FF6B6B</Color>
 
-        <!-- Separators -->
         <Color x:Key="SeparatorColor">#3E4249</Color>
 
-        <!-- Tool palette -->
         <Color x:Key="ToolHoverColor">#2E3338</Color>
         <Color x:Key="ToolSelectedColor">#1E3A5A</Color>
 
-        <!-- Canvas -->
         <Color x:Key="CanvasBgColor">#3A3A3A</Color>
         <Color x:Key="CheckerLightColor">#FFFFFF</Color>
         <Color x:Key="CheckerDarkColor">#E0E0E0</Color>
 
-        <!-- Ruler -->
         <Color x:Key="RulerBgColor">#1B1E22</Color>
         <Color x:Key="RulerTickColor">#555555</Color>
         <Color x:Key="RulerMajorColor">#999999</Color>
         <Color x:Key="RulerTextColor">#999999</Color>
         <Color x:Key="RulerCursorColor">#D4A843</Color>
 
-        <!-- Chat message colors -->
-        <Color x:Key="ChatSystemBgColor">#1E3A5A</Color>
-        <Color x:Key="ChatUserBgColor">#2A2D32</Color>
-
-        <!-- Selection / Marching ants -->
         <Color x:Key="SelectionMarchColor">#FFFFFF</Color>
         <Color x:Key="SelectionFillPreviewColor">#2A86E8</Color>
 
-        <!-- Solid Brushes -->
         <SolidColorBrush x:Key="WindowBackgroundBrush" Color="{StaticResource WindowBgColor}" />
         <SolidColorBrush x:Key="ToolbarBackgroundBrush" Color="{StaticResource ToolbarBgColor}" />
         <SolidColorBrush x:Key="PanelBackgroundBrush" Color="{StaticResource PanelBgColor}" />
@@ -75,6 +62,7 @@
         <SolidColorBrush x:Key="TextSecondaryBrush" Color="{StaticResource TextSecondaryColor}" />
         <SolidColorBrush x:Key="TextTertiaryBrush" Color="{StaticResource TextTertiaryColor}" />
         <SolidColorBrush x:Key="TextDisabledBrush" Color="{StaticResource TextDisabledColor}" />
+        <SolidColorBrush x:Key="TextErrorBrush" Color="{StaticResource TextErrorColor}" />
         <SolidColorBrush x:Key="SeparatorBrushCustom" Color="{StaticResource SeparatorColor}" />
         <SolidColorBrush x:Key="ToolHoverBrush" Color="{StaticResource ToolHoverColor}" />
         <SolidColorBrush x:Key="ToolSelectedBrush" Color="{StaticResource ToolSelectedColor}" />
@@ -86,8 +74,6 @@
         <SolidColorBrush x:Key="RulerCursorBrush" Color="{StaticResource RulerCursorColor}" />
         <SolidColorBrush x:Key="SelectionMarchBrush" Color="{StaticResource SelectionMarchColor}" />
         <SolidColorBrush x:Key="SelectionFillPreviewBrush" Color="{StaticResource SelectionFillPreviewColor}" />
-        <SolidColorBrush x:Key="ChatSystemBrush" Color="{StaticResource ChatSystemBgColor}" />
-        <SolidColorBrush x:Key="ChatUserBrush" Color="{StaticResource ChatUserBgColor}" />
     </Styles.Resources>
 
 </Styles>

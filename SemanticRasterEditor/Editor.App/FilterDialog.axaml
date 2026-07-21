@@ -2,36 +2,15 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         x:Class="Editor.App.FilterDialog"
         Title="Яркость и контраст"
-        Width="400" Height="220"
+        Width="520" Height="380"
         WindowStartupLocation="CenterOwner"
         CanResize="False"
         Background="{StaticResource WindowBackgroundBrush}"
         FontFamily="Segoe UI">
 
-    <Grid Margin="16" RowDefinitions="Auto,Auto,Auto,*">
-
-        <Grid Grid.Row="0" ColumnDefinitions="100,*" Margin="0,0,0,12">
-            <TextBlock Text="Яркость:"
-                       Foreground="{StaticResource TextSecondaryBrush}"
-                       FontSize="{StaticResource FontSizeBody}"
-                       VerticalAlignment="Center" />
-            <Slider Grid.Column="1" x:Name="BrightnessSlider"
-                    Minimum="-255" Maximum="255" Value="0"
-                    TickFrequency="1" IsSnapToTickEnabled="True" />
-        </Grid>
-
-        <Grid Grid.Row="1" ColumnDefinitions="100,*" Margin="0,0,0,12">
-            <TextBlock Text="Контраст:"
-                       Foreground="{StaticResource TextSecondaryBrush}"
-                       FontSize="{StaticResource FontSizeBody}"
-                       VerticalAlignment="Center" />
-            <Slider Grid.Column="1" x:Name="ContrastSlider"
-                    Minimum="-100" Maximum="100" Value="0"
-                    TickFrequency="1" IsSnapToTickEnabled="True" />
-        </Grid>
-
-        <StackPanel Grid.Row="3" Orientation="Horizontal"
-                    HorizontalAlignment="Right" Spacing="8">
+    <DockPanel Margin="16">
+        <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal"
+                    HorizontalAlignment="Right" Spacing="8" Margin="0,12,0,0">
             <Button Content="Отмена" Width="100" Height="28"
                     FontSize="{StaticResource FontSizeBody}"
                     Click="OnCancelClick" />
@@ -39,6 +18,38 @@
                     FontSize="{StaticResource FontSizeBody}"
                     Click="OnApplyClick" />
         </StackPanel>
-    </Grid>
 
+        <Grid ColumnDefinitions="*,220" RowDefinitions="Auto">
+            <StackPanel Grid.Column="0" Margin="0,0,16,0">
+                <Grid ColumnDefinitions="80,*" Margin="0,0,0,12">
+                    <TextBlock Text="Яркость:"
+                               Foreground="{StaticResource TextSecondaryBrush}"
+                               FontSize="{StaticResource FontSizeBody}"
+                               VerticalAlignment="Center" />
+                    <Slider Grid.Column="1" x:Name="BrightnessSlider"
+                            Minimum="-255" Maximum="255" Value="0"
+                            TickFrequency="1" IsSnapToTickEnabled="True" />
+                </Grid>
+                <Grid ColumnDefinitions="80,*">
+                    <TextBlock Text="Контраст:"
+                               Foreground="{StaticResource TextSecondaryBrush}"
+                               FontSize="{StaticResource FontSizeBody}"
+                               VerticalAlignment="Center" />
+                    <Slider Grid.Column="1" x:Name="ContrastSlider"
+                            Minimum="-100" Maximum="100" Value="0"
+                            TickFrequency="1" IsSnapToTickEnabled="True" />
+                </Grid>
+            </StackPanel>
+
+            <Border Grid.Column="1"
+                    BorderBrush="{StaticResource BorderBrushCustom}"
+                    BorderThickness="1">
+                <ScrollViewer HorizontalScrollBarVisibility="Auto"
+                              VerticalScrollBarVisibility="Auto"
+                              Background="Transparent">
+                    <Image x:Name="PreviewImage" Stretch="None" />
+                </ScrollViewer>
+            </Border>
+        </Grid>
+    </DockPanel>
 </Window>

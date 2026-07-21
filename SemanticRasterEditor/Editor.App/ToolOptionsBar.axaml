@@ -10,7 +10,6 @@
         <StackPanel Orientation="Horizontal" Spacing="12"
                     VerticalAlignment="Center" Margin="10,0">
 
-            <!-- Undo / Redo -->
             <Button x:Name="BtnUndo" ToolTip.Tip="Отменить (Ctrl+Z)"
                     Padding="3" Background="Transparent"
                     BorderThickness="0" Height="24" Width="24" IsEnabled="False">
@@ -31,7 +30,6 @@
             <Border Background="{StaticResource SeparatorBrushCustom}"
                     Width="1" Height="18" />
 
-            <!-- Foreground color -->
             <TextBlock Text="Цвет:"
                        Foreground="{StaticResource TextTertiaryBrush}"
                        FontSize="{StaticResource FontSizeSmall}"
@@ -45,7 +43,6 @@
                     ToolTip.Tip="Цвет кисти (клик для выбора)"
                     Cursor="Hand" />
 
-            <!-- Quick color palette -->
             <StackPanel x:Name="ColorPalette" Orientation="Horizontal" Spacing="2">
                 <Border Background="Black" Width="14" Height="14" CornerRadius="2" Cursor="Hand"
                         ToolTip.Tip="Чёрный" Tag="#000000" />
@@ -89,13 +86,14 @@
                        Foreground="{StaticResource TextTertiaryBrush}"
                        FontSize="{StaticResource FontSizeSmall}"
                        VerticalAlignment="Center" />
-            <Slider x:Name="OpacitySlider" Width="80"
-                    Minimum="0" Maximum="100" Value="100"
-                    VerticalAlignment="Center" />
-            <TextBlock x:Name="OpacityText" Text="100%"
+            <TextBox x:Name="OpacityInput" Width="40"
+                     Text="100" PlaceholderText="%"
+                     FontSize="{StaticResource FontSizeBody}"
+                     VerticalAlignment="Center" />
+            <TextBlock x:Name="OpacityText" Text="%"
                        Foreground="{StaticResource TextSecondaryBrush}"
                        FontSize="{StaticResource FontSizeSmall}"
-                       Width="36" VerticalAlignment="Center" />
+                       VerticalAlignment="Center" />
 
             <Border Background="{StaticResource SeparatorBrushCustom}"
                     Width="1" Height="18" />
@@ -112,7 +110,6 @@
             <Border Background="{StaticResource SeparatorBrushCustom}"
                     Width="1" Height="18" />
 
-            <!-- Snap to edges (TODO) -->
             <Button ToolTip.Tip="Привязка к краям"
                     Padding="3" Background="Transparent"
                     BorderThickness="0" Height="24" Width="24">
@@ -122,7 +119,6 @@
                       Stretch="Uniform" Fill="Transparent" />
             </Button>
 
-            <!-- Symmetry (TODO) -->
             <Button ToolTip.Tip="Симметрия"
                     Padding="3" Background="Transparent"
                     BorderThickness="0" Height="24" Width="24">
