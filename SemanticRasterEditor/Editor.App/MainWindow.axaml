@@ -6,14 +6,15 @@
         mc:Ignorable="d" d:DesignWidth="1920" d:DesignHeight="1080"
         x:Class="Editor.App.MainWindow"
         Title="RasterEditor"
-        Width="1920" Height="1080"
+        Width="1280" Height="720"
         WindowStartupLocation="CenterScreen"
         WindowState="Maximized"
-        FontFamily="Segoe UI">
+        FontFamily="Segoe UI"
+        Background="{StaticResource WindowBackgroundBrush}">
 
     <DockPanel>
-        <Menu DockPanel.Dock="Top" FontSize="13" Padding="6,4"
-              Background="#1B1E22">
+        <Menu DockPanel.Dock="Top" Padding="6,4"
+              Background="{StaticResource WindowBackgroundBrush}">
             <MenuItem Header="_Файл" x:Name="MenuFile" />
             <MenuItem Header="_Редактирование" x:Name="MenuEdit" />
             <MenuItem Header="_Вид" x:Name="MenuView" />
@@ -26,29 +27,47 @@
 
         <local:ToolOptionsBar x:Name="ToolOptions" DockPanel.Dock="Top" />
 
-        <Border DockPanel.Dock="Bottom" Background="#1B1E22" Padding="8,5"
-                BorderBrush="#4A4A4A" BorderThickness="0,1,0,0">
+        <Border DockPanel.Dock="Bottom"
+                Background="{StaticResource WindowBackgroundBrush}"
+                BorderBrush="{StaticResource BorderBrushCustom}"
+                BorderThickness="0,1,0,0"
+                Padding="10,5">
             <Grid ColumnDefinitions="Auto,Auto,Auto,*,Auto">
                 <TextBlock x:Name="ZoomText" Grid.Column="0"
-                           Text="100%" Foreground="#888888" FontSize="11"
-                           VerticalAlignment="Center" Margin="0,0,12,0" />
+                           Text="100%"
+                           Foreground="{StaticResource TextTertiaryBrush}"
+                           FontSize="{StaticResource FontSizeSmall}"
+                           VerticalAlignment="Center" Margin="0,0,16,0" />
                 <TextBlock x:Name="SizeText" Grid.Column="1"
-                           Text="" Foreground="#888888" FontSize="11"
-                           VerticalAlignment="Center" Margin="0,0,12,0" />
+                           Text=""
+                           Foreground="{StaticResource TextTertiaryBrush}"
+                           FontSize="{StaticResource FontSizeSmall}"
+                           VerticalAlignment="Center" Margin="0,0,16,0" />
                 <TextBlock x:Name="PpiText" Grid.Column="2"
-                           Text="" Foreground="#888888" FontSize="11"
-                           VerticalAlignment="Center" Margin="0,0,12,0" />
+                           Text=""
+                           Foreground="{StaticResource TextTertiaryBrush}"
+                           FontSize="{StaticResource FontSizeSmall}"
+                           VerticalAlignment="Center" Margin="0,0,16,0" />
                 <TextBlock x:Name="CursorPosText" Grid.Column="3"
-                           Text="" Foreground="#888888" FontSize="11"
-                           VerticalAlignment="Center" HorizontalAlignment="Right" />
+                           Text=""
+                           Foreground="{StaticResource TextTertiaryBrush}"
+                           FontSize="{StaticResource FontSizeSmall}"
+                           VerticalAlignment="Center"
+                           HorizontalAlignment="Right" />
+                <TextBlock x:Name="StatusText" Grid.Column="4"
+                           Text=""
+                           Foreground="{StaticResource TextErrorBrush}"
+                           FontSize="{StaticResource FontSizeSmall}"
+                           VerticalAlignment="Center" />
             </Grid>
         </Border>
 
-        <!-- Right panel: Layers + AI Chat -->
-        <DockPanel DockPanel.Dock="Right" Width="280" Background="#2C2F34">
-            <local:AiChatPanel x:Name="AiChat" DockPanel.Dock="Bottom" />
+        <Border DockPanel.Dock="Right" Width="300"
+                Background="{StaticResource PanelBackgroundBrush}"
+                BorderBrush="{StaticResource BorderBrushCustom}"
+                BorderThickness="1,0,0,0">
             <local:LayerPanel x:Name="Layers" />
-        </DockPanel>
+        </Border>
 
         <local:ToolPalette x:Name="ToolPalette" DockPanel.Dock="Left" Width="48" />
 
@@ -57,8 +76,9 @@
 
             <DockPanel DockPanel.Dock="Top">
                 <Border DockPanel.Dock="Left" Width="26" Height="26"
-                        Background="#1B1E22"
-                        BorderBrush="#4A4A4A" BorderThickness="0,0,1,1" />
+                        Background="{StaticResource RulerBackgroundBrush}"
+                        BorderBrush="{StaticResource BorderBrushCustom}"
+                        BorderThickness="0,0,1,1" />
                 <local:Ruler x:Name="RulerH" DockPanel.Dock="Top"
                              Height="26" IsHorizontal="True" />
             </DockPanel>

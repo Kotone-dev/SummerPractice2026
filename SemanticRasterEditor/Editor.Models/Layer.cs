@@ -34,18 +34,27 @@ namespace Editor.Models
 
         public void SetBitmap(SKBitmap bitmap)
         {
+            if (_disposed)
+                throw new ObjectDisposedException(nameof(Layer));
+
             _bitmap?.Dispose();
             _bitmap = bitmap;
         }
 
         public void SetMask(SKBitmap? mask)
         {
+            if (_disposed)
+                throw new ObjectDisposedException(nameof(Layer));
+
             _mask?.Dispose();
             _mask = mask;
         }
 
         public void ClearMask()
         {
+            if (_disposed)
+                return;
+
             _mask?.Dispose();
             _mask = null;
         }
@@ -62,7 +71,6 @@ namespace Editor.Models
             _mask = null;
 
             _disposed = true;
-            GC.SuppressFinalize(this);
         }
     }
 }

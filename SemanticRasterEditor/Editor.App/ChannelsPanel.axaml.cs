@@ -60,7 +60,8 @@ namespace Editor.App
                 {
                     Text = names[i],
                     VerticalAlignment = Avalonia.Layout.VerticalAlignment.Center,
-                    Foreground = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse("#CCCCCC"))
+                    Foreground = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse("#F2F2F2")),
+                    FontSize = 12
                 };
                 panel.Children.Add(tb);
 

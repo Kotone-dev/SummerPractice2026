@@ -6,6 +6,11 @@ namespace Editor.Models
     {
         public static SKBitmap CreateEmpty(int width, int height)
         {
+            if (width <= 0)
+                throw new ArgumentOutOfRangeException(nameof(width), "Ширина должна быть больше нуля");
+            if (height <= 0)
+                throw new ArgumentOutOfRangeException(nameof(height), "Высота должна быть больше нуля");
+
             var mask = new SKBitmap(width, height, SKColorType.Alpha8, SKAlphaType.Unpremul);
 
             using var canvas = new SKCanvas(mask);
@@ -16,6 +21,11 @@ namespace Editor.Models
 
         public static SKBitmap CreateFilled(int width, int height, byte value)
         {
+            if (width <= 0)
+                throw new ArgumentOutOfRangeException(nameof(width), "Ширина должна быть больше нуля");
+            if (height <= 0)
+                throw new ArgumentOutOfRangeException(nameof(height), "Высота должна быть больше нуля");
+
             var mask = new SKBitmap(width, height, SKColorType.Alpha8, SKAlphaType.Unpremul);
 
             using var canvas = new SKCanvas(mask);
@@ -26,6 +36,9 @@ namespace Editor.Models
 
         public static SKBitmap Invert(SKBitmap mask)
         {
+            if (mask is null)
+                throw new ArgumentNullException(nameof(mask));
+
             var inverted = new SKBitmap(mask.Width, mask.Height, SKColorType.Alpha8, SKAlphaType.Unpremul);
 
             for (int y = 0; y < mask.Height; y++)
