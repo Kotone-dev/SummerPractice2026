@@ -89,13 +89,14 @@
                        Foreground="{StaticResource TextTertiaryBrush}"
                        FontSize="{StaticResource FontSizeSmall}"
                        VerticalAlignment="Center" />
-            <Slider x:Name="OpacitySlider" Width="80"
-                    Minimum="0" Maximum="100" Value="100"
-                    VerticalAlignment="Center" />
-            <TextBlock x:Name="OpacityText" Text="100%"
+            <TextBox x:Name="OpacityInput" Width="40"
+                     Text="100" PlaceholderText="%"
+                     FontSize="{StaticResource FontSizeBody}"
+                     VerticalAlignment="Center" />
+            <TextBlock x:Name="OpacityText" Text="%"
                        Foreground="{StaticResource TextSecondaryBrush}"
                        FontSize="{StaticResource FontSizeSmall}"
-                       Width="36" VerticalAlignment="Center" />
+                       VerticalAlignment="Center" />
 
             <Border Background="{StaticResource SeparatorBrushCustom}"
                     Width="1" Height="18" />

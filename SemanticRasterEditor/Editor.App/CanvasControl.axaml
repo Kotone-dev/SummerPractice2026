@@ -9,6 +9,9 @@
             <MenuItem x:Name="CtxCut" Header="Вырезать" />
             <MenuItem x:Name="CtxPaste" Header="Вставить" />
             <Separator />
+            <MenuItem x:Name="CtxCopyToLayer" Header="Копировать на новый слой" />
+            <MenuItem x:Name="CtxCutToLayer" Header="Вырезать на новый слой" />
+            <Separator />
             <MenuItem x:Name="CtxDelete" Header="Удалить" />
             <MenuItem x:Name="CtxDeselect" Header="Снять выделение" />
             <MenuItem x:Name="CtxInvert" Header="Инвертировать выделение" />
@@ -19,16 +22,11 @@
 
     <Grid RowDefinitions="*,Auto" ColumnDefinitions="*,Auto">
         <!-- Canvas area -->
-        <Panel Grid.Row="0" Grid.Column="0" ClipToBounds="True">
+        <Canvas x:Name="CanvasPanel" Grid.Row="0" Grid.Column="0" ClipToBounds="True">
             <Canvas x:Name="CheckerboardCanvas" Opacity="0" />
-            <Border x:Name="ImageBorder"
-                    IsHitTestVisible="False"
-                    BoxShadow="0 2 8 0 #40000000">
-                <Image x:Name="ImageControl"
-                       Stretch="None"
-                       RenderTransformOrigin="0,0"
-                       IsHitTestVisible="True" />
-            </Border>
+            <Image x:Name="ImageControl"
+                   Stretch="Fill"
+                   IsHitTestVisible="True" />
 
             <!-- Selection overlay for marching ants -->
             <Canvas x:Name="SelectionOverlay"
@@ -88,7 +86,7 @@
                                IsHitTestVisible="False" />
                 </Canvas>
             </Canvas>
-        </Panel>
+        </Canvas>
 
         <!-- Horizontal scrollbar -->
         <ScrollBar x:Name="HScrollBar"

@@ -20,7 +20,6 @@ namespace Editor.App
             BtnLasso.Click += (_, _) => SelectTool("Lasso", BtnLasso);
             BtnBrush.Click += (_, _) => SelectTool("Brush", BtnBrush);
             BtnEraser.Click += (_, _) => SelectTool("Eraser", BtnEraser);
-            BtnFill.Click += (_, _) => SelectTool("Fill", BtnFill);
             BtnText.Click += (_, _) => SelectTool("Text", BtnText);
             BtnEyedropper.Click += (_, _) => SelectTool("Eyedropper", BtnEyedropper);
             BtnCrop.Click += (_, _) => SelectTool("Crop", BtnCrop);
@@ -40,7 +39,6 @@ namespace Editor.App
                 "Lasso" => BtnLasso,
                 "Brush" => BtnBrush,
                 "Eraser" => BtnEraser,
-                "Fill" => BtnFill,
                 "Text" => BtnText,
                 "Eyedropper" => BtnEyedropper,
                 "Crop" => BtnCrop,

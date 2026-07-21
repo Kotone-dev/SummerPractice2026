@@ -2,27 +2,38 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         x:Class="Editor.App.GaussianBlurDialog"
         Title="Размытие по Гауссу"
-        Width="300" Height="180"
+        Width="520" Height="300"
         WindowStartupLocation="CenterOwner"
         CanResize="False"
         Background="{StaticResource WindowBackgroundBrush}">
 
-    <StackPanel Margin="20" Spacing="12">
-        <TextBlock Text="Радиус размытия:" Foreground="{StaticResource TextPrimaryBrush}"
-                   FontSize="{StaticResource FontSizeBody}" />
-        <Slider x:Name="RadiusSlider" Minimum="1" Maximum="20" Value="3"
-                Width="250" />
-        <TextBlock x:Name="RadiusText" Text="3"
-                   Foreground="{StaticResource TextSecondaryBrush}"
-                   HorizontalAlignment="Center" />
-
-        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8">
-            <Button Content="Отмена" Width="90" Height="28" x:Name="BtnCancel"
-                    Background="{StaticResource PanelBackgroundBrush}"
-                    Foreground="{StaticResource TextPrimaryBrush}" />
-            <Button Content="Применить" Width="90" Height="28" x:Name="BtnApply"
-                    Background="{StaticResource AccentBrush}"
-                    Foreground="White" />
+    <DockPanel Margin="16">
+        <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal"
+                    HorizontalAlignment="Right" Spacing="8" Margin="0,12,0,0">
+            <Button x:Name="BtnCancel" Content="Отмена" Width="90" Height="28" />
+            <Button x:Name="BtnApply" Content="Применить" Width="90" Height="28" />
         </StackPanel>
-    </StackPanel>
+
+        <Grid ColumnDefinitions="*,220">
+            <StackPanel Grid.Column="0" Margin="0,0,16,0">
+                <TextBlock Text="Радиус размытия:"
+                           Foreground="{StaticResource TextPrimaryBrush}"
+                           FontSize="{StaticResource FontSizeBody}" Margin="0,0,0,8" />
+                <Slider x:Name="RadiusSlider" Minimum="1" Maximum="20" Value="3" Width="250" />
+                <TextBlock x:Name="RadiusText" Text="3"
+                           Foreground="{StaticResource TextSecondaryBrush}"
+                           HorizontalAlignment="Center" Margin="0,4,0,0" />
+            </StackPanel>
+
+            <Border Grid.Column="1"
+                    BorderBrush="{StaticResource BorderBrushCustom}"
+                    BorderThickness="1">
+                <ScrollViewer HorizontalScrollBarVisibility="Auto"
+                              VerticalScrollBarVisibility="Auto"
+                              Background="Transparent">
+                    <Image x:Name="PreviewImage" Stretch="None" />
+                </ScrollViewer>
+            </Border>
+        </Grid>
+    </DockPanel>
 </Window>

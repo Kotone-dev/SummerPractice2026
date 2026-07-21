@@ -7,6 +7,7 @@
         x:Class="Editor.App.MainWindow"
         Title="RasterEditor"
         Width="1280" Height="720"
+        Icon="/Assets/logoEditor.png"
         WindowStartupLocation="CenterScreen"
         WindowState="Maximized"
         FontFamily="Segoe UI"
@@ -35,7 +36,7 @@
                 BorderBrush="{StaticResource BorderBrushCustom}"
                 BorderThickness="0,1,0,0"
                 Padding="10,5">
-            <Grid ColumnDefinitions="Auto,Auto,Auto,*,Auto">
+            <Grid ColumnDefinitions="Auto,Auto,Auto,*,Auto,Auto" RowDefinitions="Auto,Auto">
                 <TextBlock x:Name="ZoomText" Grid.Column="0"
                            Text="100%"
                            Foreground="{StaticResource TextTertiaryBrush}"
@@ -57,11 +58,14 @@
                            FontSize="{StaticResource FontSizeSmall}"
                            VerticalAlignment="Center"
                            HorizontalAlignment="Right" />
+
                 <TextBlock x:Name="StatusText" Grid.Column="4"
                            Text=""
                            Foreground="{StaticResource TextErrorBrush}"
                            FontSize="{StaticResource FontSizeSmall}"
-                           VerticalAlignment="Center" />
+                           VerticalAlignment="Center"
+                           TextTrimming="CharacterEllipsis"
+                           MaxWidth="300" />
             </Grid>
         </Border>
 

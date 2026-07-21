@@ -13,7 +13,10 @@ namespace Editor.App
         public event EventHandler? UndoClicked;
         public event EventHandler? RedoClicked;
 
-        public double OpacityValue => OpacitySlider?.Value ?? 100;
+        public double OpacityValue =>
+            double.TryParse(OpacityInput?.Text, NumberStyles.Any, CultureInfo.InvariantCulture, out var v)
+                ? Math.Clamp(v, 0, 100) : 100;
+
         public int BrushSize => int.TryParse(BrushSizeBox?.Text, out var v) ? Math.Max(1, v) : 20;
         public SKColor SelectedColor { get; private set; } = SKColors.Black;
 
@@ -43,8 +46,15 @@ namespace Editor.App
         {
             InitializeComponent();
 
-            if (OpacitySlider is not null)
-                OpacitySlider.ValueChanged += (_, _) => UpdateOpacityText();
+            if (OpacityInput is not null)
+            {
+                OpacityInput.KeyDown += (_, e) =>
+                {
+                    if (e.Key == Key.Enter)
+                        NormalizeOpacity();
+                };
+                OpacityInput.LostFocus += (_, _) => NormalizeOpacity();
+            }
 
             if (ColorIndicator is not null)
                 ColorIndicator.PointerPressed += OnColorIndicatorClick;
@@ -76,8 +86,15 @@ namespace Editor.App
                     border.PointerPressed += (_, _) => SetColor(color, hex);
                 }
             }
+        }
 
-            UpdateOpacityText();
+        private void NormalizeOpacity()
+        {
+            if (OpacityInput is null) return;
+            if (double.TryParse(OpacityInput.Text, NumberStyles.Any, CultureInfo.InvariantCulture, out var v))
+                OpacityInput.Text = ((int)Math.Clamp(v, 0, 100)).ToString();
+            else
+                OpacityInput.Text = "100";
         }
 
         private async void OnColorIndicatorClick(object? sender, PointerPressedEventArgs e)
@@ -99,12 +116,6 @@ namespace Editor.App
             if (ColorIndicator is not null)
                 ColorIndicator.Background = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse(hex));
             ColorChanged?.Invoke(this, color);
-        }
-
-        private void UpdateOpacityText()
-        {
-            if (OpacityText is not null)
-                OpacityText.Text = $"{(int)OpacityValue}%";
         }
 
         public void SetUndoRedoState(bool canUndo, bool canRedo)
