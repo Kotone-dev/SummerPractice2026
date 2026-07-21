@@ -1,13 +1,13 @@
 using System;
 using System.Collections.Generic;
-using System.IO;
-using System.Linq;
+using System.Runtime.InteropServices;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.Shapes;
 using Avalonia.Input;
 using Avalonia.Media;
 using Avalonia.Media.Imaging;
+using Avalonia.Platform;
 using Avalonia.Threading;
 using Editor.Core;
 using Editor.Models;
@@ -19,14 +19,13 @@ namespace Editor.App
     public partial class CanvasControl : UserControl
     {
         private readonly CanvasState _state = new();
-        private readonly ScaleTransform _scaleTransform = new();
-        private readonly TranslateTransform _translateTransform = new();
         private int _imageWidth;
         private int _imageHeight;
         private Bitmap? _displayBitmap;
         private Point _lastPanPosition;
         private bool _isPanning;
         private bool _suppressScrollBarUpdate;
+        private bool _needsFitToWindow;
 
         private LayerService? _layerService;
         private ImageFilterService? _filterService;
@@ -47,32 +46,70 @@ namespace Editor.App
 
         public SKBitmap? GetSelectionBitmap()
         {
-            if (!_selectionRect.HasValue) return null;
             var active = _layerService?.ActiveLayer;
             if (active?.Bitmap is null) return null;
 
-            var r = _selectionRect.Value;
-            int x = Math.Max(0, (int)r.Left);
-            int y = Math.Max(0, (int)r.Top);
-            int w = Math.Min(active.Bitmap.Width - x, (int)r.Width);
-            int h = Math.Min(active.Bitmap.Height - y, (int)r.Height);
-            if (w <= 0 || h <= 0) return null;
+            if (!_selectionRect.HasValue && _selectionPoints.Count < 3) return null;
+            if (!_selectionRect.HasValue) return null;
 
-            var result = new SKBitmap(w, h, SKColorType.Bgra8888, SKAlphaType.Premul);
-            active.Bitmap.ExtractSubset(result, new SKRectI(x, y, x + w, y + h));
-            return result;
+            var r = _selectionRect.Value;
+
+            if (!_selectionInverted)
+            {
+                int x = Math.Max(0, (int)r.Left);
+                int y = Math.Max(0, (int)r.Top);
+                int w = Math.Min(active.Bitmap.Width - x, (int)r.Width);
+                int h = Math.Min(active.Bitmap.Height - y, (int)r.Height);
+                if (w <= 0 || h <= 0) return null;
+
+                var result = new SKBitmap(w, h, SKColorType.Bgra8888, SKAlphaType.Premul);
+                active.Bitmap.ExtractSubset(result, new SKRectI(x, y, x + w, y + h));
+                return result;
+            }
+            else
+            {
+                var clampedR = new SKRect(
+                    Math.Max(0, r.Left),
+                    Math.Max(0, r.Top),
+                    Math.Min(_imageWidth, r.Right),
+                    Math.Min(_imageHeight, r.Bottom));
+                if (clampedR.Width <= 0 || clampedR.Height <= 0) return null;
+
+                var result = CopyBitmap(active.Bitmap);
+                using var canvas = new SKCanvas(result);
+                using var clearPaint = new SKPaint { BlendMode = SKBlendMode.Clear };
+                canvas.DrawRect(clampedR, clearPaint);
+                return result;
+            }
         }
 
         public void DeleteSelection()
         {
-            if (!_selectionRect.HasValue) return;
             var active = _layerService?.ActiveLayer;
             if (active?.Bitmap is null) return;
 
+            if (!_selectionRect.HasValue && _selectionPoints.Count < 3) return;
+
             using var canvas = new SKCanvas(active.Bitmap);
             using var paint = new SKPaint { BlendMode = SKBlendMode.Clear };
-            var r = _selectionRect.Value;
-            canvas.DrawRect(r, paint);
+
+            if (_selectionInverted && _selectionRect.HasValue)
+            {
+                var r = _selectionRect.Value;
+                if (r.Top > 0) canvas.DrawRect(0, 0, _imageWidth, r.Top, paint);
+                if (r.Bottom < _imageHeight) canvas.DrawRect(0, r.Bottom, _imageWidth, _imageHeight - r.Bottom, paint);
+                if (r.Left > 0) canvas.DrawRect(0, r.Top, r.Left, r.Height, paint);
+                if (r.Right < _imageWidth) canvas.DrawRect(r.Right, r.Top, _imageWidth - r.Right, r.Height, paint);
+            }
+            else if (_selectionRect.HasValue)
+            {
+                canvas.DrawRect(_selectionRect.Value, paint);
+            }
+            else if (_selectionPath != null)
+            {
+                canvas.DrawPath(_selectionPath, paint);
+            }
+
             ClearSelection();
             ImageModified?.Invoke();
         }
@@ -92,35 +129,36 @@ namespace Editor.App
 
         public void InvertSelection()
         {
-            if (!_selectionRect.HasValue && _selectionPoints.Count < 3) return;
-            if (_selectionRect.HasValue)
+            if (!HasImage) return;
+
+            if (!_selectionRect.HasValue && _selectionPoints.Count < 3)
+            {
+                SelectAll();
+                return;
+            }
+
+            _selectionInverted = !_selectionInverted;
+
+            if (_selectionInverted && !_selectionRect.HasValue)
             {
                 _selectionRect = new SKRect(0, 0, _imageWidth, _imageHeight);
-                _selectionPath?.Dispose();
-                _selectionPath = null;
-                _selectionPoints.Clear();
                 UpdateSelectionOverlay();
-                StartMarchingAnts();
             }
-        }
 
-        public SKPoint[]? GetLassoPoints()
-        {
-            if (_selectionPoints.Count < 3) return null;
-            return _selectionPoints.ToArray();
-        }
+            if (!_selectionInverted && _selectionPath != null && _selectionRect?.Width == _imageWidth && _selectionRect?.Height == _imageHeight)
+            {
+                _selectionRect = null;
+                UpdateSelectionOverlay();
+            }
 
-        public SKPath? GetLassoPath()
-        {
-            if (_selectionPath is null) return null;
-            return _selectionPath;
+            StartMarchingAnts();
         }
 
         public event Action<float>? ZoomChanged;
-        public event Action<float, float>? ClickOnImage;
         public event Action<float, float>? CursorPositionChanged;
         public event Action? BeforeImageModified;
         public event Action? ImageModified;
+        public event Action? LayerStateChanged;
         public event EventHandler<SKColor>? ColorPicked;
 
         public string CurrentTool { get; set; } = "Move";
@@ -142,8 +180,6 @@ namespace Editor.App
             set => _filterService = value;
         }
 
-        public bool SmartSelectMode { get; set; }
-
         private bool _isDragging;
         private Point _startScreenPoint;
 
@@ -163,14 +199,11 @@ namespace Editor.App
         private SKRect? _cropRect;
         private bool _cropActive;
 
+        private bool _selectionInverted;
+
         public CanvasControl()
         {
             InitializeComponent();
-
-            var transforms = new TransformGroup();
-            transforms.Children.Add(_scaleTransform);
-            transforms.Children.Add(_translateTransform);
-            ImageControl.RenderTransform = transforms;
 
             PointerWheelChanged += OnPointerWheelChanged;
             PointerPressed += OnPointerPressed;
@@ -192,6 +225,8 @@ namespace Editor.App
             if (CtxCopy is not null) CtxCopy.Click += (_, _) => CopyToClipboard();
             if (CtxCut is not null) CtxCut.Click += (_, _) => CutToClipboard();
             if (CtxPaste is not null) CtxPaste.Click += (_, _) => PasteFromClipboard();
+            if (CtxCopyToLayer is not null) CtxCopyToLayer.Click += (_, _) => CopySelectionToNewLayer();
+            if (CtxCutToLayer is not null) CtxCutToLayer.Click += (_, _) => CutSelectionToNewLayer();
             if (CtxDelete is not null) CtxDelete.Click += (_, _) => DeleteSelection();
             if (CtxDeselect is not null) CtxDeselect.Click += (_, _) => DeselectAll();
             if (CtxInvert is not null) CtxInvert.Click += (_, _) => InvertSelection();
@@ -205,6 +240,8 @@ namespace Editor.App
             if (CtxCopy is not null) CtxCopy.IsEnabled = HasSelection;
             if (CtxCut is not null) CtxCut.IsEnabled = HasSelection;
             if (CtxPaste is not null) CtxPaste.IsEnabled = ClipboardBitmap is not null;
+            if (CtxCopyToLayer is not null) CtxCopyToLayer.IsEnabled = HasSelection;
+            if (CtxCutToLayer is not null) CtxCutToLayer.IsEnabled = HasSelection;
             if (CtxDelete is not null) CtxDelete.IsEnabled = HasSelection;
             if (CtxDeselect is not null) CtxDeselect.IsEnabled = HasSelection;
             if (CtxInvert is not null) CtxInvert.IsEnabled = HasSelection;
@@ -243,17 +280,73 @@ namespace Editor.App
                 return;
             }
 
+            var sw = System.Diagnostics.Stopwatch.StartNew();
+
             _imageWidth = bitmap.Width;
             _imageHeight = bitmap.Height;
             HideCheckerboard();
 
-            using var image = SKImage.FromBitmap(bitmap);
-            using var data = image.Encode(SKEncodedImageFormat.Jpeg, 85);
-            using var stream = new MemoryStream(data.ToArray());
+            var avaloniaBitmap = SkiaToAvaloniaBitmap(bitmap);
+            var t1 = sw.ElapsedMilliseconds;
 
-            SetImageSource(new Bitmap(stream));
-            UpdateTransform();
+            SetImageSource(avaloniaBitmap);
             UpdateScrollBars();
+
+            sw.Stop();
+            System.Diagnostics.Debug.WriteLine(
+                $"[SetImage] total={sw.ElapsedMilliseconds}ms convert={t1}ms " +
+                $"src={bitmap.Width}x{bitmap.Height}");
+        }
+
+        internal static Bitmap SkiaToAvaloniaBitmap(SKBitmap bitmap)
+        {
+            var sw = System.Diagnostics.Stopwatch.StartNew();
+
+            var wb = new WriteableBitmap(
+                new PixelSize(bitmap.Width, bitmap.Height),
+                new Vector(96, 96),
+                PixelFormat.Bgra8888,
+                AlphaFormat.Premul);
+
+            var srcRowBytes = bitmap.RowBytes;
+            var expectedRowBytes = bitmap.Width * 4;
+
+            using (var fb = wb.Lock())
+            {
+                var srcPtr = bitmap.GetPixels();
+                if (srcPtr == IntPtr.Zero)
+                    goto done;
+
+                var srcBytes = bitmap.Info.BytesSize;
+
+                if (srcRowBytes == expectedRowBytes && fb.RowBytes == expectedRowBytes)
+                {
+                    unsafe
+                    {
+                        new ReadOnlySpan<byte>(srcPtr.ToPointer(), srcBytes)
+                            .CopyTo(new Span<byte>(fb.Address.ToPointer(), srcBytes));
+                    }
+                }
+                else
+                {
+                    var dstPtr = fb.Address;
+                    var row = new byte[expectedRowBytes];
+
+                    for (int y = 0; y < bitmap.Height; y++)
+                    {
+                        Marshal.Copy(IntPtr.Add(srcPtr, y * srcRowBytes), row, 0, expectedRowBytes);
+                        Marshal.Copy(row, 0, IntPtr.Add(dstPtr, y * fb.RowBytes), expectedRowBytes);
+                    }
+                }
+            }
+
+            done:
+            sw.Stop();
+            System.Diagnostics.Debug.WriteLine(
+                $"[SetImage] SkiaToAv={sw.ElapsedMilliseconds}ms {bitmap.Width}x{bitmap.Height} " +
+                $"strideMatch={srcRowBytes == expectedRowBytes}");
+
+            return wb;
         }
 
         private void SetImageSource(Bitmap? source)
@@ -288,13 +381,21 @@ namespace Editor.App
                 }
             }
             CheckerboardCanvas.Opacity = 1;
-            if (ImageBorder is not null) ImageBorder.IsVisible = false;
+            ImageControl.IsVisible = false;
         }
 
         private void HideCheckerboard()
         {
             if (CheckerboardCanvas is not null) CheckerboardCanvas.Opacity = 0;
-            if (ImageBorder is not null) ImageBorder.IsVisible = HasImage;
+            ImageControl.IsVisible = HasImage;
+        }
+
+        public void MarkFitToWindow()
+        {
+            _needsFitToWindow = true;
+            System.Diagnostics.Debug.WriteLine(
+                $"[MarkFitToWindow] _needsFitToWindow=true, HasImage={HasImage}, " +
+                $"ImageSize={_imageWidth}x{_imageHeight}, Bounds={Bounds.Width:F0}x{Bounds.Height:F0}");
         }
 
         public void FitToWindow()
@@ -304,7 +405,8 @@ namespace Editor.App
             if (canvasSize.Width <= 0 || canvasSize.Height <= 0) return;
             var imageSize = new SKSizeI(_imageWidth, _imageHeight);
             _state.FitToWindow(canvasSize, imageSize);
-            UpdateTransform();
+            ApplyViewState();
+            UpdateSelectionOverlay();
             UpdateScrollBars();
             ZoomChanged?.Invoke(_state.Zoom);
         }
@@ -312,7 +414,7 @@ namespace Editor.App
         public void ResetZoom()
         {
             _state.ResetZoom();
-            UpdateTransform();
+            ApplyViewState();
             UpdateScrollBars();
             ZoomChanged?.Invoke(_state.Zoom);
         }
@@ -358,6 +460,107 @@ namespace Editor.App
             using var canvas = new SKCanvas(active.Bitmap);
             canvas.DrawBitmap(bitmap, new SKPoint(0, 0),
                 new SKSamplingOptions(SKFilterMode.Nearest, SKMipmapMode.None));
+            ImageModified?.Invoke();
+        }
+
+        public void CopySelectionToNewLayer()
+        {
+            var selection = GetSelectionBitmap();
+            if (selection is null) return;
+
+            var active = _layerService?.ActiveLayer;
+            if (active?.Bitmap is null) return;
+
+            int w = active.Bitmap.Width;
+            int h = active.Bitmap.Height;
+
+            var newLayerBitmap = new SKBitmap(w, h, SKColorType.Bgra8888, SKAlphaType.Premul);
+            using (var canvas = new SKCanvas(newLayerBitmap))
+            {
+                canvas.Clear(SKColors.Transparent);
+
+                if (_selectionRect.HasValue)
+                {
+                    var r = _selectionRect.Value;
+                    if (!_selectionInverted)
+                    {
+                        canvas.DrawBitmap(selection, new SKPoint(r.Left, r.Top),
+                            new SKSamplingOptions(SKFilterMode.Nearest, SKMipmapMode.None));
+                    }
+                    else
+                    {
+                        canvas.DrawBitmap(selection, new SKPoint(0, 0),
+                            new SKSamplingOptions(SKFilterMode.Nearest, SKMipmapMode.None));
+                    }
+                }
+            }
+
+            _layerService?.Add(newLayerBitmap, "Копия выделения");
+            selection.Dispose();
+            ClearSelection();
+            LayerStateChanged?.Invoke();
+            ImageModified?.Invoke();
+        }
+
+        public void CutSelectionToNewLayer()
+        {
+            var selection = GetSelectionBitmap();
+            if (selection is null) return;
+
+            var active = _layerService?.ActiveLayer;
+            if (active?.Bitmap is null)
+            {
+                selection.Dispose();
+                return;
+            }
+
+            BeforeImageModified?.Invoke();
+
+            int w = active.Bitmap.Width;
+            int h = active.Bitmap.Height;
+            var selRect = _selectionRect;
+
+            using var srcCanvas = new SKCanvas(active.Bitmap);
+            using var clearPaint = new SKPaint { BlendMode = SKBlendMode.Clear };
+
+            if (_selectionInverted && selRect.HasValue)
+            {
+                var r = selRect.Value;
+                if (r.Top > 0) srcCanvas.DrawRect(0, 0, _imageWidth, r.Top, clearPaint);
+                if (r.Bottom < _imageHeight) srcCanvas.DrawRect(0, r.Bottom, _imageWidth, _imageHeight - r.Bottom, clearPaint);
+                if (r.Left > 0) srcCanvas.DrawRect(0, r.Top, r.Left, r.Height, clearPaint);
+                if (r.Right < _imageWidth) srcCanvas.DrawRect(r.Right, r.Top, _imageWidth - r.Right, r.Height, clearPaint);
+            }
+            else if (selRect.HasValue)
+            {
+                srcCanvas.DrawRect(selRect.Value, clearPaint);
+            }
+
+            var newLayerBitmap = new SKBitmap(w, h, SKColorType.Bgra8888, SKAlphaType.Premul);
+            using (var canvas = new SKCanvas(newLayerBitmap))
+            {
+                canvas.Clear(SKColors.Transparent);
+
+                if (selRect.HasValue)
+                {
+                    var r = selRect.Value;
+                    if (!_selectionInverted)
+                    {
+                        canvas.DrawBitmap(selection, new SKPoint(r.Left, r.Top),
+                            new SKSamplingOptions(SKFilterMode.Nearest, SKMipmapMode.None));
+                    }
+                    else
+                    {
+                        canvas.DrawBitmap(selection, new SKPoint(0, 0),
+                            new SKSamplingOptions(SKFilterMode.Nearest, SKMipmapMode.None));
+                    }
+                }
+            }
+
+            _layerService?.Add(newLayerBitmap, "Вырезка");
+            selection.Dispose();
+            ClearSelection();
+            LayerStateChanged?.Invoke();
             ImageModified?.Invoke();
         }
 
@@ -407,6 +610,7 @@ namespace Editor.App
             _selectionPath?.Dispose();
             _selectionPath = null;
             _selectionPoints.Clear();
+            _selectionInverted = false;
             _marchingAntsTimer?.Stop();
             _marchingAntsOffset = 0;
 
@@ -414,6 +618,99 @@ namespace Editor.App
             MarchingBlack.IsVisible = false;
             MarchingLassoWhite.IsVisible = false;
             MarchingLassoBlack.IsVisible = false;
+        }
+
+        private void MagicWand(SKPoint clickPoint)
+        {
+            var bmp = GetActiveBitmap();
+            if (bmp is null) return;
+
+            int ix = (int)clickPoint.X;
+            int iy = (int)clickPoint.Y;
+            int w = bmp.Width;
+            int h = bmp.Height;
+
+            if (ix < 0 || ix >= w || iy < 0 || iy >= h) return;
+
+            const int tolerance = 32;
+
+            SKColor targetColor;
+            byte[] mask;
+            int minX, maxX, minY, maxY;
+            unsafe
+            {
+                var allPixels = (byte*)bmp.GetPixels().ToPointer();
+                int stride = bmp.RowBytes;
+
+                var px = allPixels + iy * stride + ix * 4;
+                targetColor = new SKColor(px[2], px[1], px[0], px[3]);
+
+                mask = new byte[w * h];
+                var queue = new Queue<(int, int)>();
+                queue.Enqueue((ix, iy));
+                mask[iy * w + ix] = 1;
+
+                minX = ix; maxX = ix; minY = iy; maxY = iy;
+
+                while (queue.Count > 0)
+                {
+                    var (cx, cy) = queue.Dequeue();
+
+                    if (cx < minX) minX = cx;
+                    if (cx > maxX) maxX = cx;
+                    if (cy < minY) minY = cy;
+                    if (cy > maxY) maxY = cy;
+
+                    Span<int> dirs = stackalloc int[] { -1, 0, 1, 0, -1 };
+                    for (int d = 0; d < 4; d++)
+                    {
+                        int nx = cx + dirs[d];
+                        int ny = cy + dirs[d + 1];
+                        if (nx < 0 || nx >= w || ny < 0 || ny >= h) continue;
+                        if (mask[ny * w + nx] != 0) continue;
+
+                        var npx = allPixels + ny * stride + nx * 4;
+                        int dr = npx[2] - targetColor.Red;
+                        int dg = npx[1] - targetColor.Green;
+                        int db = npx[0] - targetColor.Blue;
+                        if (dr * dr + dg * dg + db * db <= tolerance * tolerance)
+                        {
+                            mask[ny * w + nx] = 1;
+                            queue.Enqueue((nx, ny));
+                        }
+                    }
+                }
+            }
+
+            int selW = maxX - minX + 1;
+            int selH = maxY - minY + 1;
+            if (selW < 1 || selH < 1) return;
+
+            _selectionRect = new SKRect(minX, minY, maxX + 1, maxY + 1);
+
+            var path = new SKPath();
+            for (int y = minY; y <= maxY; y++)
+            {
+                int spanStart = -1;
+                for (int x = minX; x <= maxX; x++)
+                {
+                    if (mask[y * w + x] != 0)
+                    {
+                        if (spanStart < 0) spanStart = x;
+                    }
+                    else if (spanStart >= 0)
+                    {
+                        path.AddRect(new SKRect(spanStart, y, x, y + 1));
+                        spanStart = -1;
+                    }
+                }
+                if (spanStart >= 0)
+                    path.AddRect(new SKRect(spanStart, y, maxX + 1, y + 1));
+            }
+
+            _selectionPath = path;
+            UpdateSelectionOverlay();
+            StartMarchingAnts();
         }
 
         private void StartMarchingAnts()
@@ -439,6 +736,10 @@ namespace Editor.App
             double y = topLeft.Y;
             double w = bottomRight.X - topLeft.X;
             double h = bottomRight.Y - topLeft.Y;
+
+            System.Diagnostics.Debug.WriteLine(
+                $"[SelectionOverlay] imgRect=({r.Left:F0},{r.Top:F0})-({r.Right:F0},{r.Bottom:F0}) " +
+                $"screenPos=({x:F1},{y:F1}) size={w:F1}x{h:F1} zoom={_state.Zoom:F4}");
 
             if (w < 1) w = 1;
             if (h < 1) h = 1;
@@ -560,7 +861,7 @@ namespace Editor.App
         private void OnPointerWheelChanged(object? sender, PointerWheelEventArgs e)
         {
             if (!HasImage) return;
-            var position = e.GetPosition(this);
+            var position = e.GetPosition(CanvasPanel);
             var zoomFactor = e.Delta.Y > 0 ? 1.1f : 1f / 1.1f;
             var newZoom = _state.Zoom * zoomFactor;
             var mouseX = (float)position.X;
@@ -570,7 +871,7 @@ namespace Editor.App
             var panX = mouseX - (mouseX - _state.PanOffset.X) * (_state.Zoom / oldZoom);
             var panY = mouseY - (mouseY - _state.PanOffset.Y) * (_state.Zoom / oldZoom);
             _state.SetPanOffset(new SKPoint(panX, panY));
-            UpdateTransform();
+            ApplyViewState();
             UpdateScrollBars();
             ZoomChanged?.Invoke(_state.Zoom);
             if (_selectionRect.HasValue) UpdateSelectionOverlay();
@@ -580,19 +881,19 @@ namespace Editor.App
 
         private void OnPointerPressed(object? sender, PointerPressedEventArgs e)
         {
-            if (e.GetCurrentPoint(this).Properties.IsMiddleButtonPressed ||
-                e.GetCurrentPoint(this).Properties.IsRightButtonPressed)
+            if (e.GetCurrentPoint(CanvasPanel).Properties.IsMiddleButtonPressed ||
+                e.GetCurrentPoint(CanvasPanel).Properties.IsRightButtonPressed)
             {
                 _isPanning = true;
-                _lastPanPosition = e.GetPosition(this);
+                _lastPanPosition = e.GetPosition(CanvasPanel);
                 e.Pointer.Capture(this);
                 return;
             }
 
-            if (!e.GetCurrentPoint(this).Properties.IsLeftButtonPressed)
+            if (!e.GetCurrentPoint(CanvasPanel).Properties.IsLeftButtonPressed)
                 return;
 
-            var pos = e.GetPosition(this);
+            var pos = e.GetPosition(CanvasPanel);
             var imgPt = ScreenToImage(pos);
 
             if (!HasImage && CurrentTool != "Hand" && CurrentTool != "Zoom")
@@ -641,18 +942,6 @@ namespace Editor.App
                     }
                     break;
 
-                case "Fill":
-                    if (GetActiveBitmap() is { } bmpFill)
-                    {
-                        BeforeImageModified?.Invoke();
-                        int ix = Math.Clamp((int)imgPt.X, 0, bmpFill.Width - 1);
-                        int iy = Math.Clamp((int)imgPt.Y, 0, bmpFill.Height - 1);
-                        FloodFill(bmpFill, ix, iy);
-                        SetImage(GetActiveBitmap());
-                        ImageModified?.Invoke();
-                    }
-                    break;
-
                 case "Eyedropper":
                     if (GetActiveBitmap() is { } bmpEye)
                     {
@@ -692,16 +981,14 @@ namespace Editor.App
                     break;
 
                 case "SmartSelect":
-                    _isPanning = false;
-                    if (imgPt.X >= 0 && imgPt.X < _imageWidth && imgPt.Y >= 0 && imgPt.Y < _imageHeight)
-                        ClickOnImage?.Invoke(imgPt.X, imgPt.Y);
+                    MagicWand(imgPt);
                     break;
             }
         }
 
         private void OnPointerMoved(object? sender, PointerEventArgs e)
         {
-            var position = e.GetPosition(this);
+            var position = e.GetPosition(CanvasPanel);
             float pixelX = ((float)position.X - _state.PanOffset.X) / _state.Zoom;
             float pixelY = ((float)position.Y - _state.PanOffset.Y) / _state.Zoom;
             CursorPositionChanged?.Invoke(pixelX, pixelY);
@@ -712,7 +999,7 @@ namespace Editor.App
                 var dy = (float)(position.Y - _lastPanPosition.Y);
                 _state.MovePan(dx, dy);
                 _lastPanPosition = position;
-                UpdateTransform();
+                ApplyViewState();
                 UpdateScrollBars();
                 if (_selectionRect.HasValue) UpdateSelectionOverlay();
                 if (_selectionPoints.Count >= 2) UpdateLassoOverlay();
@@ -790,7 +1077,7 @@ namespace Editor.App
                 return;
             }
 
-            var pos = e.GetPosition(this);
+            var pos = e.GetPosition(CanvasPanel);
             var imgPt = ScreenToImage(pos);
 
             switch (CurrentTool)
@@ -907,7 +1194,7 @@ namespace Editor.App
             var panY = mouseY - (mouseY - _state.PanOffset.Y) * (_state.Zoom / oldZoom);
             _state.SetPanOffset(new SKPoint(panX, panY));
 
-            UpdateTransform();
+            ApplyViewState();
             UpdateScrollBars();
             ZoomChanged?.Invoke(_state.Zoom);
         }
@@ -942,10 +1229,7 @@ namespace Editor.App
         private void PreviewWorkingBitmap()
         {
             if (_workingBitmap is null) return;
-            using var image = SKImage.FromBitmap(_workingBitmap);
-            using var data = image.Encode(SKEncodedImageFormat.Jpeg, 70);
-            using var stream = new MemoryStream(data.ToArray());
-            SetImageSource(new Bitmap(stream));
+            SetImageSource(SkiaToAvaloniaBitmap(_workingBitmap));
         }
 
         private void PreviewMove()
@@ -1000,86 +1284,12 @@ namespace Editor.App
                     new SKSamplingOptions(SKFilterMode.Nearest, SKMipmapMode.None));
             }
             active.SetBitmap(result);
-            _imageWidth = newW;
-            _imageHeight = newH;
             _moveOffsetX = 0;
             _moveOffsetY = 0;
             ImageModified?.Invoke();
         }
 
-        private void FloodFill(SKBitmap bitmap, int startX, int startY)
-        {
-            int w = bitmap.Width;
-            int h = bitmap.Height;
-            if (startX < 0 || startX >= w || startY < 0 || startY >= h) return;
-
-            var targetColor = bitmap.GetPixel(startX, startY);
-            var fillColor = BrushColor.WithAlpha((byte)(BrushOpacity * 255));
-
-            if (targetColor == fillColor) return;
-
-            var result = new SKBitmap(w, h, SKColorType.Bgra8888, SKAlphaType.Premul);
-            using (var srcCanvas = new SKCanvas(result))
-            {
-                srcCanvas.Clear(SKColors.Transparent);
-                srcCanvas.DrawBitmap(bitmap, new SKPoint(0, 0),
-                    new SKSamplingOptions(SKFilterMode.Nearest, SKMipmapMode.None));
-            }
-
-            var pixels = result.GetPixels(out _);
-            int bytesPerPixel = 4;
-            int stride = w * bytesPerPixel;
-
-            var buffer = new byte[stride * h];
-            System.Runtime.InteropServices.Marshal.Copy(pixels, buffer, 0, buffer.Length);
-
-            bool Match(int x, int y)
-            {
-                int idx = (y * w + x) * bytesPerPixel;
-                return buffer[idx] == targetColor.Blue &&
-                       buffer[idx + 1] == targetColor.Green &&
-                       buffer[idx + 2] == targetColor.Red &&
-                       buffer[idx + 3] == targetColor.Alpha;
-            }
-
-            void SetPixel(int x, int y)
-            {
-                int idx = (y * w + x) * bytesPerPixel;
-                buffer[idx] = fillColor.Blue;
-                buffer[idx + 1] = fillColor.Green;
-                buffer[idx + 2] = fillColor.Red;
-                buffer[idx + 3] = fillColor.Alpha;
-            }
-
-            var stack = new Stack<(int x, int y)>();
-            stack.Push((startX, startY));
-
-            while (stack.Count > 0)
-            {
-                var (cx, cy) = stack.Pop();
-                if (cx < 0 || cx >= w || cy < 0 || cy >= h) continue;
-                if (!Match(cx, cy)) continue;
-
-                int lx = cx;
-                while (lx > 0 && Match(lx - 1, cy)) lx--;
-                int rx = cx;
-                while (rx < w - 1 && Match(rx + 1, cy)) rx++;
-
-                for (int x = lx; x <= rx; x++)
-                {
-                    SetPixel(x, cy);
-                    if (cy > 0 && Match(x, cy - 1)) stack.Push((x, cy - 1));
-                    if (cy < h - 1 && Match(x, cy + 1)) stack.Push((x, cy + 1));
-                }
-            }
-
-            System.Runtime.InteropServices.Marshal.Copy(buffer, 0, pixels, buffer.Length);
-            var active = _layerService?.ActiveLayer;
-            if (active?.Bitmap is not null)
-                active.SetBitmap(result);
-        }
-
-        private void HandleTextClick(SKPoint imagePoint)
+        private async void HandleTextClick(SKPoint imagePoint)
         {
             var active = _layerService?.ActiveLayer;
             if (active?.Bitmap is null) return;
@@ -1089,7 +1299,7 @@ namespace Editor.App
 
             var dialog = new TextEntryDialog();
 
-            _ = dialog.ShowDialog(parentWindow);
+            await dialog.ShowDialog(parentWindow);
 
             if (dialog.DialogResult != true) return;
             if (string.IsNullOrWhiteSpace(dialog.TextValue)) return;
@@ -1146,28 +1356,56 @@ namespace Editor.App
 
         #endregion
 
+        protected override Size ArrangeOverride(Size finalSize)
+        {
+            var result = base.ArrangeOverride(finalSize);
+
+            System.Diagnostics.Debug.WriteLine(
+                $"[ArrangeOverride] needsFit={_needsFitToWindow} HasImage={HasImage} " +
+                $"finalSize={finalSize.Width:F0}x{finalSize.Height:F0} " +
+                $"imageSize={_imageWidth}x{_imageHeight} zoom={_state.Zoom:F4} pan=({_state.PanOffset.X:F1},{_state.PanOffset.Y:F1})");
+
+            if (_needsFitToWindow && HasImage && finalSize.Width > 0 && finalSize.Height > 0)
+            {
+                _needsFitToWindow = false;
+                _state.FitToWindow(new SKSizeI((int)finalSize.Width, (int)finalSize.Height),
+                    new SKSizeI(_imageWidth, _imageHeight));
+                System.Diagnostics.Debug.WriteLine(
+                    $"[ArrangeOverride] FitToWindow: zoom={_state.Zoom:F4} pan=({_state.PanOffset.X:F1},{_state.PanOffset.Y:F1})");
+                ApplyViewState();
+                UpdateSelectionOverlay();
+                UpdateScrollBars();
+                ZoomChanged?.Invoke(_state.Zoom);
+            }
+            return result;
+        }
+
         #region Transform and scroll
 
-        private void UpdateTransform()
+        private void ApplyViewState()
         {
-            _scaleTransform.ScaleX = _state.Zoom;
-            _scaleTransform.ScaleY = _state.Zoom;
-            _translateTransform.X = _state.PanOffset.X;
-            _translateTransform.Y = _state.PanOffset.Y;
+            Canvas.SetLeft(ImageControl, _state.PanOffset.X);
+            Canvas.SetTop(ImageControl, _state.PanOffset.Y);
+            ImageControl.Width = _imageWidth * _state.Zoom;
+            ImageControl.Height = _imageHeight * _state.Zoom;
+
+            System.Diagnostics.Debug.WriteLine(
+                $"[ApplyView] Zoom={_state.Zoom:F4} Pan=({_state.PanOffset.X:F1},{_state.PanOffset.Y:F1}) " +
+                $"Img={_imageWidth}x{_imageHeight} Size={ImageControl.Width:F0}x{ImageControl.Height:F0}");
         }
 
         private void OnHScrollBarValueChanged(object? sender, Avalonia.Controls.Primitives.RangeBaseValueChangedEventArgs e)
         {
             if (_suppressScrollBarUpdate) return;
             _state.SetPanOffset(new SKPoint(-(float)e.NewValue, _state.PanOffset.Y));
-            UpdateTransform();
+            ApplyViewState();
         }
 
         private void OnVScrollBarValueChanged(object? sender, Avalonia.Controls.Primitives.RangeBaseValueChangedEventArgs e)
         {
             if (_suppressScrollBarUpdate) return;
             _state.SetPanOffset(new SKPoint(_state.PanOffset.X, -(float)e.NewValue));
-            UpdateTransform();
+            ApplyViewState();
         }
 
         private void UpdateScrollBars()
@@ -1212,6 +1450,32 @@ namespace Editor.App
 
         #endregion
 
+        public static SKBitmap ApplyChannelFilter(SKBitmap source, bool[] visibility)
+        {
+            var result = new SKBitmap(source.Width, source.Height,
+                SKColorType.Bgra8888, SKAlphaType.Premul);
+
+            var matrix = new float[20]
+            {
+                visibility[0] && visibility[1] ? 1 : 0, 0, 0, 0, 0,
+                0, visibility[0] && visibility[2] ? 1 : 0, 0, 0, 0,
+                0, 0, visibility[0] && visibility[3] ? 1 : 0, 0, 0,
+                0, 0, 0, visibility[0] && visibility[4] ? 1 : 0, 0
+            };
+
+            if (!visibility[4])
+                matrix[19] = 255;
+
+            using var filter = SKColorFilter.CreateColorMatrix(matrix);
+            using var paint = new SKPaint { ColorFilter = filter };
+            using var canvas = new SKCanvas(result);
+            canvas.Clear(SKColors.Transparent);
+            canvas.DrawBitmap(source, new SKPoint(0, 0),
+                new SKSamplingOptions(SKFilterMode.Nearest, SKMipmapMode.None), paint);
+
+            return result;
+        }
+
         public void SetToolCursor()
         {
             Cursor = CurrentTool switch
@@ -1220,7 +1484,6 @@ namespace Editor.App
                 "Zoom" => new Cursor(StandardCursorType.Help),
                 "Eyedropper" => new Cursor(StandardCursorType.Cross),
                 "Brush" or "Eraser" => new Cursor(StandardCursorType.Cross),
-                "Fill" => new Cursor(StandardCursorType.Cross),
                 "Move" => new Cursor(StandardCursorType.SizeAll),
                 "Crop" => new Cursor(StandardCursorType.Cross),
                 "Text" => new Cursor(StandardCursorType.Ibeam),

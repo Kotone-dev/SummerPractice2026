@@ -47,9 +47,7 @@
         <Color x:Key="RulerTextColor">#999999</Color>
         <Color x:Key="RulerCursorColor">#D4A843</Color>
 
-        <!-- Chat message colors -->
-        <Color x:Key="ChatSystemBgColor">#1E3A5A</Color>
-        <Color x:Key="ChatUserBgColor">#2A2D32</Color>
+        <Color x:Key="TextErrorColor">#FF6B6B</Color>
 
         <!-- Selection / Marching ants -->
         <Color x:Key="SelectionMarchColor">#FFFFFF</Color>
@@ -86,8 +84,7 @@
         <SolidColorBrush x:Key="RulerCursorBrush" Color="{StaticResource RulerCursorColor}" />
         <SolidColorBrush x:Key="SelectionMarchBrush" Color="{StaticResource SelectionMarchColor}" />
         <SolidColorBrush x:Key="SelectionFillPreviewBrush" Color="{StaticResource SelectionFillPreviewColor}" />
-        <SolidColorBrush x:Key="ChatSystemBrush" Color="{StaticResource ChatSystemBgColor}" />
-        <SolidColorBrush x:Key="ChatUserBrush" Color="{StaticResource ChatUserBgColor}" />
+        <SolidColorBrush x:Key="TextErrorBrush" Color="{StaticResource TextErrorColor}" />
     </Styles.Resources>
 
 </Styles>

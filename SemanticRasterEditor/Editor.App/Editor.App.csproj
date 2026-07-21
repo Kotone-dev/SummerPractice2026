@@ -3,7 +3,9 @@
     <OutputType>WinExe</OutputType>
     <TargetFramework>net9.0</TargetFramework>
     <Nullable>enable</Nullable>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <ApplicationManifest>app.manifest</ApplicationManifest>
+    <ApplicationIcon>Assets\logoEditor.ico</ApplicationIcon>
     <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
   </PropertyGroup>
 
@@ -22,5 +24,9 @@
     <ProjectReference Include="..\Editor.Core\Editor.Core.csproj" />
     <ProjectReference Include="..\Editor.Services\Editor.Services.csproj" />
     <ProjectReference Include="..\Editor.Models\Editor.Models.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <AvaloniaResource Include="Assets\logoEditor.png" />
   </ItemGroup>
 </Project>

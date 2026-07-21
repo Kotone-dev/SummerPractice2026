@@ -1,5 +1,4 @@
 using System;
-using System.IO;
 using Avalonia.Controls;
 using Avalonia.Interactivity;
 using Avalonia.Media.Imaging;
@@ -170,7 +169,7 @@ namespace Editor.App
 
         private void OnRemoveClick(object? sender, RoutedEventArgs e)
         {
-            if (_layerService is null || _layerService.Count <= 1)
+            if (_layerService is null || _layerService.Count == 0)
                 return;
 
             _layerService.Remove(_layerService.ActiveIndex);
@@ -205,7 +204,7 @@ namespace Editor.App
             int thumbW = (int)(source.Width * scale);
             int thumbH = (int)(source.Height * scale);
 
-            using var resized = new SKBitmap(thumbW, thumbH, SKColorType.Rgba8888, SKAlphaType.Premul);
+            using var resized = new SKBitmap(thumbW, thumbH, SKColorType.Bgra8888, SKAlphaType.Premul);
             using var canvas = new SKCanvas(resized);
             canvas.Clear(SKColors.Transparent);
 
@@ -216,12 +215,7 @@ namespace Editor.App
                 new SKSamplingOptions(SKFilterMode.Linear, SKMipmapMode.None),
                 paint);
 
-            using var stream = new MemoryStream();
-            using var image = SKImage.FromBitmap(resized);
-            using var data = image.Encode(SKEncodedImageFormat.Png, 60);
-            data.SaveTo(stream);
-            stream.Position = 0;
-            return new Bitmap(stream);
+            return CanvasControl.SkiaToAvaloniaBitmap(resized);
         }
     }
 }

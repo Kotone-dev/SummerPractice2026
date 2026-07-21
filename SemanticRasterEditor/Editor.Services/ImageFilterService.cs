@@ -18,7 +18,7 @@ namespace Editor.Services
             if (source is null)
                 throw new ArgumentNullException(nameof(source));
 
-            using var src = SkiaBitmapConverter.ToMat(source);
+            using var src = SkiaBitmapConverter.ToMatWithAlpha(source);
             using var dst = new Mat();
             Cv2.ConvertScaleAbs(src, dst, 1.0, value);
             return SkiaBitmapConverter.ToBitmap(dst);
@@ -29,7 +29,7 @@ namespace Editor.Services
             if (source is null)
                 throw new ArgumentNullException(nameof(source));
 
-            using var src = SkiaBitmapConverter.ToMat(source);
+            using var src = SkiaBitmapConverter.ToMatWithAlpha(source);
             using var dst = new Mat();
 
             double alpha = 1.0 + value / 100.0 * 2.0;
@@ -44,7 +44,7 @@ namespace Editor.Services
             if (source is null)
                 throw new ArgumentNullException(nameof(source));
 
-            using var src = SkiaBitmapConverter.ToMat(source);
+            using var src = SkiaBitmapConverter.ToMatWithAlpha(source);
             using var dst = new Mat();
             using var kernel = Cv2.GetStructuringElement(MorphShapes.Rect, new OpenCvSharp.Size(3, 3));
 
@@ -72,7 +72,7 @@ namespace Editor.Services
             if (source is null)
                 throw new ArgumentNullException(nameof(source));
 
-            using var src = SkiaBitmapConverter.ToMat(source);
+            using var src = SkiaBitmapConverter.ToMatWithAlpha(source);
             using var dst = new Mat();
             int ksize = Math.Max(1, radius * 2 + 1);
             Cv2.GaussianBlur(src, dst, new OpenCvSharp.Size(ksize, ksize), 0);
@@ -84,7 +84,7 @@ namespace Editor.Services
             if (source is null)
                 throw new ArgumentNullException(nameof(source));
 
-            using var src = SkiaBitmapConverter.ToMat(source);
+            using var src = SkiaBitmapConverter.ToMatWithAlpha(source);
             using var dst = new Mat();
             using var kernel = new Mat(3, 3, MatType.CV_32F);
             unsafe
@@ -103,7 +103,7 @@ namespace Editor.Services
             if (source is null)
                 throw new ArgumentNullException(nameof(source));
 
-            using var src = SkiaBitmapConverter.ToMat(source);
+            using var src = SkiaBitmapConverter.ToMatWithAlpha(source);
             using var dst = new Mat();
             Cv2.Rotate(src, dst, RotateFlags.Rotate90Clockwise);
             return SkiaBitmapConverter.ToBitmap(dst);
@@ -114,7 +114,7 @@ namespace Editor.Services
             if (source is null)
                 throw new ArgumentNullException(nameof(source));
 
-            using var src = SkiaBitmapConverter.ToMat(source);
+            using var src = SkiaBitmapConverter.ToMatWithAlpha(source);
             using var dst = new Mat();
             Cv2.Rotate(src, dst, RotateFlags.Rotate90Counterclockwise);
             return SkiaBitmapConverter.ToBitmap(dst);
@@ -125,7 +125,7 @@ namespace Editor.Services
             if (source is null)
                 throw new ArgumentNullException(nameof(source));
 
-            using var src = SkiaBitmapConverter.ToMat(source);
+            using var src = SkiaBitmapConverter.ToMatWithAlpha(source);
             using var dst = new Mat();
             Cv2.Flip(src, dst, FlipMode.Y);
             return SkiaBitmapConverter.ToBitmap(dst);
@@ -136,7 +136,7 @@ namespace Editor.Services
             if (source is null)
                 throw new ArgumentNullException(nameof(source));
 
-            using var src = SkiaBitmapConverter.ToMat(source);
+            using var src = SkiaBitmapConverter.ToMatWithAlpha(source);
             using var dst = new Mat();
             Cv2.Flip(src, dst, FlipMode.X);
             return SkiaBitmapConverter.ToBitmap(dst);
@@ -147,7 +147,7 @@ namespace Editor.Services
             if (source is null)
                 throw new ArgumentNullException(nameof(source));
 
-            using var src = SkiaBitmapConverter.ToMat(source);
+            using var src = SkiaBitmapConverter.ToMatWithAlpha(source);
             using var dst = new Mat();
             Cv2.Resize(src, dst, new OpenCvSharp.Size(width, height), interpolation: InterpolationFlags.Lanczos4);
             return SkiaBitmapConverter.ToBitmap(dst);

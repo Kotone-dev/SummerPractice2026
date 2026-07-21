@@ -1,8 +1,6 @@
 using System;
-using System.IO;
+using System.Runtime.InteropServices;
 using Avalonia.Controls;
-using Avalonia.Media.Imaging;
-using OpenCvSharp;
 using SkiaSharp;
 
 namespace Editor.App
@@ -10,6 +8,10 @@ namespace Editor.App
     public partial class ChannelsPanel : UserControl
     {
         private SKBitmap? _sourceImage;
+        private readonly bool[] _channelVisibility = { true, true, true, true, true };
+
+        public bool[] ChannelVisibility => (bool[])_channelVisibility.Clone();
+        public event Action? ChannelVisibilityChanged;
 
         public ChannelsPanel()
         {
@@ -32,20 +34,59 @@ namespace Editor.App
             if (_sourceImage is null)
                 return;
 
+            int previewW = 60;
+            int previewH = (int)((long)previewW * _sourceImage.Height / _sourceImage.Width);
+            if (previewH < 1) previewH = 1;
+
             var items = new ListBoxItem[5];
             string[] names = ["RGB", "Красный", "Зеленый", "Синий", "Альфа"];
+            var channelData = new byte[previewW * previewH];
 
             for (int i = 0; i < 5; i++)
             {
-                var channelBitmap = ExtractChannel(_sourceImage, i);
-                var preview = CreatePreview(channelBitmap);
-                channelBitmap.Dispose();
+                ExtractChannel(_sourceImage, i, channelData, previewW, previewH);
+
+                using var bmp = new SKBitmap(previewW, previewH, SKColorType.Gray8, SKAlphaType.Unpremul);
+                unsafe
+                {
+                    var dst = (byte*)bmp.GetPixels().ToPointer();
+                    if (dst is not null)
+                        Marshal.Copy(channelData, 0, (IntPtr)dst, previewW * previewH);
+                }
+
+                var preview = CanvasControl.SkiaToAvaloniaBitmap(bmp);
 
                 var panel = new StackPanel
                 {
                     Orientation = Avalonia.Layout.Orientation.Horizontal,
                     Spacing = 8
                 };
+
+                var visibilityBtn = new Button
+                {
+                    Padding = new Avalonia.Thickness(2),
+                    Background = Avalonia.Media.Brushes.Transparent,
+                    Width = 20,
+                    Height = 20
+                };
+                var eyeIcon = new TextBlock
+                {
+                    Text = _channelVisibility[i] ? "👁" : "—",
+                    FontSize = 10,
+                    Foreground = new Avalonia.Media.SolidColorBrush(
+                        Avalonia.Media.Color.Parse("#B5B5B5")),
+                    VerticalAlignment = Avalonia.Layout.VerticalAlignment.Center,
+                    HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Center
+                };
+                visibilityBtn.Content = eyeIcon;
+                var channelIndex = i;
+                visibilityBtn.Click += (_, _) =>
+                {
+                    _channelVisibility[channelIndex] = !_channelVisibility[channelIndex];
+                    Refresh();
+                    ChannelVisibilityChanged?.Invoke();
+                };
+                panel.Children.Add(visibilityBtn);
 
                 var img = new Image
                 {
@@ -71,41 +112,41 @@ namespace Editor.App
             ChannelList.ItemsSource = items;
         }
 
-        private static SKBitmap ExtractChannel(SKBitmap source, int channelIndex)
+        private static void ExtractChannel(SKBitmap source, int channelIndex, byte[] dst, int w, int h)
         {
-            int w = source.Width;
-            int h = source.Height;
-            var result = new SKBitmap(w, h, SKColorType.Gray8, SKAlphaType.Unpremul);
+            var srcW = source.Width;
+            var srcH = source.Height;
 
-            for (int y = 0; y < h; y++)
+            unsafe
             {
-                for (int x = 0; x < w; x++)
+                var srcPixels = (byte*)source.GetPixels().ToPointer();
+                if (srcPixels is null) return;
+                var srcStride = source.RowBytes;
+
+                for (int y = 0; y < h; y++)
                 {
-                    var pixel = source.GetPixel(x, y);
-                    byte value = channelIndex switch
+                    int srcY = y * srcH / h;
+                    var srcRow = srcPixels + srcY * srcStride;
+                    int dstOff = y * w;
+
+                    for (int x = 0; x < w; x++)
                     {
-                        0 => (byte)((pixel.Red + pixel.Green + pixel.Blue) / 3),
-                        1 => pixel.Red,
-                        2 => pixel.Green,
-                        3 => pixel.Blue,
-                        4 => pixel.Alpha,
-                        _ => 0
-                    };
-                    result.SetPixel(x, y, new SKColor(value, value, value));
+                        int srcX = x * srcW / w;
+                        var px = srcRow + srcX * 4;
+                        byte value = channelIndex switch
+                        {
+                            0 => (byte)((px[2] + px[1] + px[0]) / 3),
+                            1 => px[2],
+                            2 => px[1],
+                            3 => px[0],
+                            4 => px[3],
+                            _ => 0
+                        };
+                        dst[dstOff + x] = value;
+                    }
                 }
             }
-
-            return result;
         }
 
-        private static Bitmap CreatePreview(SKBitmap channel)
-        {
-            using var stream = new MemoryStream();
-            using var image = SKImage.FromBitmap(channel);
-            using var data = image.Encode(SKEncodedImageFormat.Png, 80);
-            data.SaveTo(stream);
-            stream.Position = 0;
-            return new Bitmap(stream);
-        }
     }
 }
