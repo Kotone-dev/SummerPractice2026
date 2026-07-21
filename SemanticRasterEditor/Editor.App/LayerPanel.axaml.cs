@@ -80,7 +80,7 @@ namespace Editor.App
                     Text = layer.IsVisible ? "👁" : "—",
                     FontSize = 10,
                     Foreground = new Avalonia.Media.SolidColorBrush(
-                        Avalonia.Media.Color.Parse("#AAAAAA")),
+                        Avalonia.Media.Color.Parse("#B5B5B5")),
                     VerticalAlignment = Avalonia.Layout.VerticalAlignment.Center,
                     HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Center
                 };
@@ -97,17 +97,17 @@ namespace Editor.App
                 // Thumbnail
                 var thumbBorder = new Border
                 {
-                    Width = 36,
-                    Height = 36,
+                    Width = 40,
+                    Height = 40,
                     BorderBrush = new Avalonia.Media.SolidColorBrush(
-                        Avalonia.Media.Color.Parse("#3F3F3F")),
+                        Avalonia.Media.Color.Parse("#3E4249")),
                     BorderThickness = new Avalonia.Thickness(1),
                     ClipToBounds = true
                 };
 
                 if (layer.Bitmap is not null)
                 {
-                    var thumb = CreateThumbnail(layer.Bitmap, 36, 36);
+                    var thumb = CreateThumbnail(layer.Bitmap, 40, 40);
                     var img = new Image
                     {
                         Source = thumb,
@@ -156,7 +156,18 @@ namespace Editor.App
 
         private void OnAddClick(object? sender, RoutedEventArgs e)
         {
-            // TODO: реализовать добавление нового пустого слоя
+            if (_layerService is null) return;
+
+            int w = 800, h = 600;
+            var active = _layerService.ActiveLayer;
+            if (active?.Bitmap is not null)
+            {
+                w = active.Bitmap.Width;
+                h = active.Bitmap.Height;
+            }
+
+            _layerService.AddEmpty(w, h);
+            Refresh();
             LayerChanged?.Invoke();
         }
 

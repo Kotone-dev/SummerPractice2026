@@ -24,6 +24,8 @@ namespace Editor.Services
             if (string.IsNullOrEmpty(path))
                 throw new ArgumentException("Путь не может быть пустым", nameof(path));
 
+            quality = Math.Clamp(quality, 0, 100);
+
             var format = GetFormat(path);
             using var image = SKImage.FromBitmap(bitmap);
             using var data = image.Encode(format, quality);
@@ -39,7 +41,7 @@ namespace Editor.Services
                 ".jpg" or ".jpeg" => SKEncodedImageFormat.Jpeg,
                 ".webp" => SKEncodedImageFormat.Webp,
                 ".gif" => SKEncodedImageFormat.Gif,
-                ".bmp" => SKEncodedImageFormat.Png,
+                ".bmp" => SKEncodedImageFormat.Bmp,
                 _ => SKEncodedImageFormat.Png
             };
         }

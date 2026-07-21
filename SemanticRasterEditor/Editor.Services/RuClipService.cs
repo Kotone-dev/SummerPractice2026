@@ -22,8 +22,27 @@ namespace Editor.Services
                 throw new ArgumentException("Путь к токенизатору не может быть пустым", nameof(tokenizerPath));
 
             _textSession = new InferenceSession(textModelPath);
-            _visualSession = new InferenceSession(visualModelPath);
-            _tokenizer = new Tokenizer(vocabPath: tokenizerPath);
+
+            try
+            {
+                _visualSession = new InferenceSession(visualModelPath);
+            }
+            catch (Microsoft.ML.OnnxRuntime.OnnxRuntimeException)
+            {
+                _textSession?.Dispose();
+                throw;
+            }
+
+            try
+            {
+                _tokenizer = new Tokenizer(vocabPath: tokenizerPath);
+            }
+            catch (Exception)
+            {
+                _textSession?.Dispose();
+                _visualSession?.Dispose();
+                throw;
+            }
         }
 
         public static RuClipService LoadFromDirectory(string modelsDir)
@@ -59,6 +78,8 @@ namespace Editor.Services
             };
 
             using var results = _textSession.Run(inputs);
+            if (results.Count == 0)
+                throw new InvalidOperationException("Текстовая модель не вернула результатов");
             var output = results.First().AsTensor<float>().ToArray();
 
             return L2Normalize(output);
@@ -81,6 +102,8 @@ namespace Editor.Services
             };
 
             using var results = _visualSession.Run(inputs);
+            if (results.Count == 0)
+                throw new InvalidOperationException("Визуальная модель не вернула результатов");
             var output = results.First().AsTensor<float>().ToArray();
 
             return L2Normalize(output);
@@ -133,8 +156,8 @@ namespace Editor.Services
 
             _textSession.Dispose();
             _visualSession.Dispose();
+            _tokenizer?.Dispose();
             _disposed = true;
-            GC.SuppressFinalize(this);
         }
     }
 }

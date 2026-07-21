@@ -1,0 +1,46 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="Editor.App.ResizeDialog"
+        Title="Размер изображения"
+        Width="320" Height="220"
+        WindowStartupLocation="CenterOwner"
+        CanResize="False"
+        Background="{StaticResource WindowBackgroundBrush}">
+
+    <StackPanel Margin="20" Spacing="12">
+        <TextBlock Text="Новый размер:" Foreground="{StaticResource TextPrimaryBrush}"
+                   FontSize="{StaticResource FontSizeBody}" />
+        <Grid ColumnDefinitions="Auto,*,Auto" RowDefinitions="Auto,Auto" ColumnSpacing="8" RowSpacing="8">
+            <TextBlock Grid.Row="0" Grid.Column="0" Text="Ширина:"
+                       Foreground="{StaticResource TextSecondaryBrush}"
+                       VerticalAlignment="Center" />
+            <TextBox Grid.Row="0" Grid.Column="1" x:Name="WidthBox" Text="800"
+                     FontSize="{StaticResource FontSizeBody}" />
+            <TextBlock Grid.Row="0" Grid.Column="2" Text="px"
+                       Foreground="{StaticResource TextTertiaryBrush}"
+                       VerticalAlignment="Center" />
+
+            <TextBlock Grid.Row="1" Grid.Column="0" Text="Высота:"
+                       Foreground="{StaticResource TextSecondaryBrush}"
+                       VerticalAlignment="Center" />
+            <TextBox Grid.Row="1" Grid.Column="1" x:Name="HeightBox" Text="600"
+                     FontSize="{StaticResource FontSizeBody}" />
+            <TextBlock Grid.Row="1" Grid.Column="2" Text="px"
+                       Foreground="{StaticResource TextTertiaryBrush}"
+                       VerticalAlignment="Center" />
+        </Grid>
+
+        <CheckBox x:Name="KeepAspect" Content="Сохранять пропорции"
+                  Foreground="{StaticResource TextSecondaryBrush}"
+                  IsChecked="True" />
+
+        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8">
+            <Button Content="Отмена" Width="90" Height="28" x:Name="BtnCancel"
+                    Background="{StaticResource PanelBackgroundBrush}"
+                    Foreground="{StaticResource TextPrimaryBrush}" />
+            <Button Content="OK" Width="90" Height="28" x:Name="BtnOk"
+                    Background="{StaticResource AccentBrush}"
+                    Foreground="White" />
+        </StackPanel>
+    </StackPanel>
+</Window>

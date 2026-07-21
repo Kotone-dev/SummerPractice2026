@@ -1,7 +1,5 @@
-using System.Runtime.InteropServices;
 using Microsoft.ML.OnnxRuntime;
 using Microsoft.ML.OnnxRuntime.Tensors;
-using OpenCvSharp;
 using SkiaSharp;
 
 namespace Editor.Services
@@ -14,6 +12,9 @@ namespace Editor.Services
         public const int MaxSegments = 20;
         public const float DefaultConfThreshold = 0.4f;
         public const float DefaultIouThreshold = 0.9f;
+
+        private const int FeaturesPerAnchor = 37;
+        private const int MaskChannels = 32;
 
         public FastSamService(string modelPath)
         {
@@ -56,7 +57,12 @@ namespace Editor.Services
 
             var masks = GenerateMasks(filtered, protos, origW, origH);
 
-            return masks.Take(MaxSegments).ToList();
+            var result = masks.Take(MaxSegments).ToList();
+
+            for (int i = MaxSegments; i < masks.Count; i++)
+                masks[i].Dispose();
+
+            return result;
         }
 
         private (float[] boxes, float[] maskCoeffs, float[] protos) RunInference(float[] tensorData)
@@ -73,7 +79,7 @@ namespace Editor.Services
             using var results = _session.Run(inputs);
 
             var outputs = results.ToList();
-            var output0 = outputs[0].AsTensor<float>().ToArray();
+            var output0 = outputs.Count > 0 ? outputs[0].AsTensor<float>().ToArray() : Array.Empty<float>();
             var output4 = outputs.Count > 4 ? outputs[4].AsTensor<float>().ToArray() : Array.Empty<float>();
             var output5 = outputs.Count > 5 ? outputs[5].AsTensor<float>().ToArray() : Array.Empty<float>();
 
@@ -84,16 +90,19 @@ namespace Editor.Services
         {
             var detections = new List<Detection>();
 
-            int numAnchors = output0.Length / 37;
+            if (output0.Length < FeaturesPerAnchor)
+                return detections;
+
+            int numAnchors = output0.Length / FeaturesPerAnchor;
             float scale = FastSamPreprocessor.ComputeScale(origW, origH);
 
             for (int i = 0; i < numAnchors; i++)
             {
-                float cx = output0[i * 37 + 0];
-                float cy = output0[i * 37 + 1];
-                float w = output0[i * 37 + 2];
-                float h = output0[i * 37 + 3];
-                float objScore = output0[i * 37 + 4];
+                float cx = output0[i * FeaturesPerAnchor + 0];
+                float cy = output0[i * FeaturesPerAnchor + 1];
+                float w = output0[i * FeaturesPerAnchor + 2];
+                float h = output0[i * FeaturesPerAnchor + 3];
+                float objScore = output0[i * FeaturesPerAnchor + 4];
 
                 float x1 = (cx - w / 2f) / scale;
                 float y1 = (cy - h / 2f) / scale;
@@ -108,16 +117,16 @@ namespace Editor.Services
                 if (x2 <= x1 || y2 <= y1)
                     continue;
 
-                var coeffs = new float[32];
-                if (maskCoeffs != null)
+                var coeffs = new float[MaskChannels];
+                if (maskCoeffs.Length > 0)
                 {
-                    for (int c = 0; c < 32; c++)
+                    for (int c = 0; c < MaskChannels; c++)
                         coeffs[c] = maskCoeffs[c * numAnchors + i];
                 }
                 else
                 {
-                    for (int c = 0; c < 32; c++)
-                        coeffs[c] = output0[i * 37 + 5 + c];
+                    for (int c = 0; c < MaskChannels; c++)
+                        coeffs[c] = output0[i * FeaturesPerAnchor + 5 + c];
                 }
 
                 detections.Add(new Detection
@@ -185,41 +194,43 @@ namespace Editor.Services
         {
             var masks = new List<SKBitmap>();
 
-            if (protos is null)
+            if (protos is null || protos.Length == 0)
                 return masks;
 
-            int protoChannels = 32;
             int protoH = 256;
             int protoW = 256;
 
-            if (protos.Length > 0)
+            int totalSize = protos.Length / MaskChannels;
+            int sqrt = (int)Math.Sqrt(totalSize);
+            if (sqrt * sqrt == totalSize)
             {
-                int totalSize = protos.Length / protoChannels;
-                int sqrt = (int)Math.Sqrt(totalSize);
-                if (sqrt * sqrt == totalSize)
-                {
-                    protoH = sqrt;
-                    protoW = sqrt;
-                }
+                protoH = sqrt;
+                protoW = sqrt;
             }
 
-            foreach (var det in detections)
+            var areas = new int[detections.Count];
+
+            for (int d = 0; d < detections.Count; d++)
             {
-                var mask = GenerateSingleMask(det, protos, protoChannels, protoH, protoW, origW, origH);
+                var mask = GenerateSingleMask(detections[d], protos, MaskChannels, protoH, protoW, origW, origH);
                 masks.Add(mask);
+                areas[d] = CountMaskPixels(mask);
             }
 
-            masks.Sort((a, b) =>
-            {
-                int areaA = CountMaskPixels(a);
-                int areaB = CountMaskPixels(b);
-                return areaB.CompareTo(areaA);
-            });
+            var indexed = Enumerable.Range(0, masks.Count)
+                .OrderByDescending(i => areas[i])
+                .ToList();
 
-            return masks;
+            var sorted = new List<SKBitmap>();
+            foreach (var idx in indexed)
+            {
+                sorted.Add(masks[idx]);
+            }
+
+            return sorted;
         }
 
-        private static SKBitmap GenerateSingleMask(
+        private static unsafe SKBitmap GenerateSingleMask(
             Detection det, float[] protos, int protoChannels, int protoH, int protoW, int origW, int origH)
         {
             var mask = new SKBitmap(origW, origH, SKColorType.Alpha8, SKAlphaType.Unpremul);
@@ -252,6 +263,8 @@ namespace Editor.Services
             protoBboxX2 = Math.Max(0, Math.Min(protoBboxX2, protoW));
             protoBboxY2 = Math.Max(0, Math.Min(protoBboxY2, protoH));
 
+            var pixels = (byte*)mask.GetPixels().ToPointer();
+
             for (int py = protoBboxY1; py < protoBboxY2; py++)
             {
                 for (int px = protoBboxX1; px < protoBboxX2; px++)
@@ -269,8 +282,7 @@ namespace Editor.Services
                     origX = Math.Max(0, Math.Min(origX, origW - 1));
                     origY = Math.Max(0, Math.Min(origY, origH - 1));
 
-                    byte alpha = (byte)(val * 255);
-                    mask.SetPixel(origX, origY, new SKColor(0, 0, 0, alpha));
+                    pixels[origY * origW + origX] = (byte)(val * 255);
                 }
             }
 
@@ -282,17 +294,18 @@ namespace Editor.Services
             return 1f / (1f + MathF.Exp(-x));
         }
 
-        private static int CountMaskPixels(SKBitmap mask)
+        private static unsafe int CountMaskPixels(SKBitmap mask)
         {
             int count = 0;
-            for (int y = 0; y < mask.Height; y++)
+            var pixels = (byte*)mask.GetPixels().ToPointer();
+            int total = mask.Width * mask.Height;
+
+            for (int i = 0; i < total; i++)
             {
-                for (int x = 0; x < mask.Width; x++)
-                {
-                    if (mask.GetPixel(x, y).Alpha > 127)
-                        count++;
-                }
+                if (pixels[i] > 127)
+                    count++;
             }
+
             return count;
         }
 
@@ -303,7 +316,6 @@ namespace Editor.Services
 
             _session.Dispose();
             _disposed = true;
-            GC.SuppressFinalize(this);
         }
 
         private class Detection

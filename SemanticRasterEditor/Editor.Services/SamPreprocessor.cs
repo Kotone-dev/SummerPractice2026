@@ -1,3 +1,4 @@
+using System.Runtime.InteropServices;
 using OpenCvSharp;
 using SkiaSharp;
 
@@ -25,39 +26,37 @@ namespace Editor.Services
             int newW = (int)(w * scale);
             int newH = (int)(h * scale);
 
-            var resized = new Mat();
+            using var resized = new Mat();
             Cv2.Resize(source, resized, new OpenCvSharp.Size(newW, newH), 0, 0, InterpolationFlags.Linear);
 
             var padded = new Mat(ImageSize, ImageSize, source.Type(), new Scalar(0, 0, 0));
             resized.CopyTo(padded[new Rect(0, 0, newW, newH)]);
-            resized.Dispose();
 
             return padded;
         }
 
         public static float[] ToTensor(Mat padded)
         {
-            var rgb = new Mat();
+            using var rgb = new Mat();
             Cv2.CvtColor(padded, rgb, ColorConversionCodes.BGR2RGB);
 
             int h = rgb.Rows;
             int w = rgb.Cols;
-            var data = new float[3 * h * w];
+            int channelSize = h * w;
+            var allBytes = new byte[channelSize * 3];
+            Marshal.Copy(rgb.Data, allBytes, 0, allBytes.Length);
 
-            for (int y = 0; y < h; y++)
+            var data = new float[3 * channelSize];
+            for (int i = 0; i < channelSize; i++)
             {
-                for (int x = 0; x < w; x++)
-                {
-                    var pixel = rgb.At<Vec3b>(y, x);
-                    int dstIdx = (y * w + x) * 3;
-
-                    data[dstIdx] = (pixel[0] / 255f - Mean[0]) / Std[0];
-                    data[dstIdx + 1] = (pixel[1] / 255f - Mean[1]) / Std[1];
-                    data[dstIdx + 2] = (pixel[2] / 255f - Mean[2]) / Std[2];
-                }
+                float r = allBytes[i * 3];
+                float g = allBytes[i * 3 + 1];
+                float b = allBytes[i * 3 + 2];
+                data[i * 3] = (r / 255f - Mean[0]) / Std[0];
+                data[i * 3 + 1] = (g / 255f - Mean[1]) / Std[1];
+                data[i * 3 + 2] = (b / 255f - Mean[2]) / Std[2];
             }
 
-            rgb.Dispose();
             return data;
         }
 

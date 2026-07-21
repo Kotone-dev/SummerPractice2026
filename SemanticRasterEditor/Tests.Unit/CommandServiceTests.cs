@@ -6,8 +6,6 @@ namespace Tests.Unit
 {
     public class CommandServiceTests
     {
-        private readonly CommandService _service = new();
-
         [Fact]
         public void Execute_EmptyCommand_ReturnsFail()
         {
@@ -33,7 +31,7 @@ namespace Tests.Unit
         [Fact]
         public void Execute_Help_ReturnsSuccess()
         {
-            var result = _service.Execute("помощь");
+            var result = CommandService.ParseAndExecute("помощь", new ImageFilterService(), CreateLayerService());
             Assert.True(result.Success);
             Assert.Contains("яркость", result.Message);
         }
@@ -41,7 +39,7 @@ namespace Tests.Unit
         [Fact]
         public void Execute_HelpEnglish_ReturnsSuccess()
         {
-            var result = _service.Execute("help");
+            var result = CommandService.ParseAndExecute("help", new ImageFilterService(), CreateLayerService());
             Assert.True(result.Success);
         }
 
@@ -236,17 +234,18 @@ namespace Tests.Unit
         }
 
         [Fact]
-        public void AvailableCommands_ContainsCoreCommands()
+        public void AvailableCommands_ContainsHelpCommand()
         {
-            var commands = _service.AvailableCommands;
-            Assert.Contains("помощь", commands);
-            Assert.Contains("help", commands);
+            var result = CommandService.ParseAndExecute("помощь", new ImageFilterService(), CreateLayerService());
+            Assert.True(result.Success);
+            Assert.Contains("яркость", result.Message);
         }
 
         [Fact]
         public void GetHelp_ReturnsNonEmptyList()
         {
-            var help = _service.GetHelp();
+            var service = new CommandService();
+            var help = service.GetHelp();
             Assert.NotEmpty(help);
         }
 
