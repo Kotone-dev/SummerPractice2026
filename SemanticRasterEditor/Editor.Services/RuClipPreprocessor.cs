@@ -1,3 +1,4 @@
+using System.Runtime.InteropServices;
 using OpenCvSharp;
 using SkiaSharp;
 using Tokenizers.DotNet;
@@ -21,34 +22,31 @@ namespace Editor.Services
         {
             using var bgr = SkiaBitmapConverter.ToMat(source);
 
-            var resized = new Mat();
+            using var resized = new Mat();
             Cv2.Resize(bgr, resized, new OpenCvSharp.Size(ImageSize, ImageSize),
                 0, 0, InterpolationFlags.Linear);
 
-            var rgb = new Mat();
+            using var rgb = new Mat();
             Cv2.CvtColor(resized, rgb, ColorConversionCodes.BGR2RGB);
 
-            var floatMat = new Mat();
+            using var floatMat = new Mat();
             rgb.ConvertTo(floatMat, MatType.CV_32FC3);
 
-            var data = new float[3 * ImageSize * ImageSize];
+            int channelSize = ImageSize * ImageSize;
+            var allBytes = new float[channelSize * 3];
+            Marshal.Copy(floatMat.Data, allBytes, 0, allBytes.Length);
 
-            for (int c = 0; c < 3; c++)
+            var data = new float[3 * channelSize];
+            for (int i = 0; i < channelSize; i++)
             {
-                for (int y = 0; y < ImageSize; y++)
-                {
-                    for (int x = 0; x < ImageSize; x++)
-                    {
-                        var pixel = floatMat.At<Vec3f>(y, x);
-                        float normalized = (pixel[c] / 255f - Mean[c]) / Std[c];
-                        data[c * ImageSize * ImageSize + y * ImageSize + x] = normalized;
-                    }
-                }
+                float r = allBytes[i * 3];
+                float g = allBytes[i * 3 + 1];
+                float b = allBytes[i * 3 + 2];
+                data[i] = (r / 255f - Mean[0]) / Std[0];
+                data[channelSize + i] = (g / 255f - Mean[1]) / Std[1];
+                data[channelSize * 2 + i] = (b / 255f - Mean[2]) / Std[2];
             }
 
-            resized.Dispose();
-            rgb.Dispose();
-            floatMat.Dispose();
             return data;
         }
 

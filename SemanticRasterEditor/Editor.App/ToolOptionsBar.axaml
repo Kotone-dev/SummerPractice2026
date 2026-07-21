@@ -1,46 +1,132 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              x:Class="Editor.App.ToolOptionsBar"
-             Height="30" Background="#24272B"
-             FontFamily="Segoe UI" FontSize="11">
+             Height="36"
+             Background="{StaticResource ToolbarBackgroundBrush}"
+             FontFamily="Segoe UI">
 
-    <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center" Margin="10,0">
-        <TextBlock Text="Режим:" Foreground="#888888" VerticalAlignment="Center" />
-        <ComboBox x:Name="BlendModeCombo" Width="110" SelectedIndex="0">
-            <ComboBoxItem Content="Нормальный" />
-            <ComboBoxItem Content="Умножение" />
-            <ComboBoxItem Content="Экран" />
-            <ComboBoxItem Content="Осветление" />
-            <ComboBoxItem Content="Затемнение" />
-        </ComboBox>
+    <Border BorderBrush="{StaticResource BorderBrushCustom}"
+            BorderThickness="0,0,0,1">
+        <StackPanel Orientation="Horizontal" Spacing="12"
+                    VerticalAlignment="Center" Margin="10,0">
 
-        <TextBlock Text="Непрозрачность:" Foreground="#888888" VerticalAlignment="Center" />
-        <Slider x:Name="OpacitySlider" Width="80" Minimum="0" Maximum="100" Value="100"
-                VerticalAlignment="Center" />
-        <TextBlock x:Name="OpacityText" Text="100%" Foreground="#AAAAAA" Width="36"
-                   VerticalAlignment="Center" />
+            <Button x:Name="BtnUndo" ToolTip.Tip="Отменить (Ctrl+Z)"
+                    Padding="3" Background="Transparent"
+                    BorderThickness="0" Height="24" Width="24" IsEnabled="False">
+                <Path Data="M12,4 L4,12 L12,20 Z M4,12 L20,12 C22.2,12 24,13.8 24,16 L24,20 L20,20 L20,16 C20,15.4 19.6,15 19,15 L8,15 Z"
+                      Stroke="{StaticResource TextTertiaryBrush}"
+                      StrokeThickness="1.5" Width="14" Height="14"
+                      Stretch="Uniform" Fill="Transparent" />
+            </Button>
+            <Button x:Name="BtnRedo" ToolTip.Tip="Повторить (Ctrl+Y)"
+                    Padding="3" Background="Transparent"
+                    BorderThickness="0" Height="24" Width="24" IsEnabled="False">
+                <Path Data="M12,4 L20,12 L12,20 Z M20,12 L4,12 C1.8,12 0,13.8 0,16 L0,20 L4,20 L4,16 C4,15.4 4.4,15 5,15 L16,15 Z"
+                      Stroke="{StaticResource TextTertiaryBrush}"
+                      StrokeThickness="1.5" Width="14" Height="14"
+                      Stretch="Uniform" Fill="Transparent" />
+            </Button>
 
-        <Border Background="#4A4A4A" Width="1" Height="18" />
+            <Border Background="{StaticResource SeparatorBrushCustom}"
+                    Width="1" Height="18" />
 
-        <TextBlock Text="Размер:" Foreground="#888888" VerticalAlignment="Center" />
-        <TextBox x:Name="BrushSizeBox" Width="50" Text="200" PlaceholderText="px"
-                 VerticalAlignment="Center" />
+            <TextBlock Text="Цвет:"
+                       Foreground="{StaticResource TextTertiaryBrush}"
+                       FontSize="{StaticResource FontSizeSmall}"
+                       VerticalAlignment="Center" />
+            <Border x:Name="ColorIndicator"
+                    Width="20" Height="20"
+                    CornerRadius="3"
+                    Background="Black"
+                    BorderBrush="{StaticResource BorderBrushCustom}"
+                    BorderThickness="1"
+                    ToolTip.Tip="Цвет кисти (клик для выбора)"
+                    Cursor="Hand" />
 
-        <Border Background="#4A4A4A" Width="1" Height="18" />
+            <StackPanel x:Name="ColorPalette" Orientation="Horizontal" Spacing="2">
+                <Border Background="Black" Width="14" Height="14" CornerRadius="2" Cursor="Hand"
+                        ToolTip.Tip="Чёрный" Tag="#000000" />
+                <Border Background="White" Width="14" Height="14" CornerRadius="2" Cursor="Hand"
+                        BorderBrush="{StaticResource BorderBrushCustom}" BorderThickness="1"
+                        ToolTip.Tip="Белый" Tag="#FFFFFF" />
+                <Border Background="#FF0000" Width="14" Height="14" CornerRadius="2" Cursor="Hand"
+                        ToolTip.Tip="Красный" Tag="#FF0000" />
+                <Border Background="#00FF00" Width="14" Height="14" CornerRadius="2" Cursor="Hand"
+                        ToolTip.Tip="Зелёный" Tag="#00FF00" />
+                <Border Background="#0000FF" Width="14" Height="14" CornerRadius="2" Cursor="Hand"
+                        ToolTip.Tip="Синий" Tag="#0000FF" />
+                <Border Background="#FFFF00" Width="14" Height="14" CornerRadius="2" Cursor="Hand"
+                        ToolTip.Tip="Жёлтый" Tag="#FFFF00" />
+                <Border Background="#FF8000" Width="14" Height="14" CornerRadius="2" Cursor="Hand"
+                        ToolTip.Tip="Оранжевый" Tag="#FF8000" />
+                <Border Background="#8000FF" Width="14" Height="14" CornerRadius="2" Cursor="Hand"
+                        ToolTip.Tip="Фиолетовый" Tag="#8000FF" />
+            </StackPanel>
 
-        <!-- TODO: реализовать привязку к краям -->
-        <Button ToolTip.Tip="Привязка к краям" Padding="3" Background="Transparent">
-            <Path Data="M2,2 L22,2 L22,22 L2,22 Z M6,6 L6,18 L18,18 L18,6 Z"
-                  Stroke="#AAAAAA" StrokeThickness="1.5" Width="14" Height="14"
-                  Stretch="Uniform" Fill="Transparent" />
-        </Button>
+            <Border Background="{StaticResource SeparatorBrushCustom}"
+                    Width="1" Height="18" />
 
-        <!-- TODO: реализовать симметрию -->
-        <Button ToolTip.Tip="Симметрия" Padding="3" Background="Transparent">
-            <Path Data="M12,2 L12,22 M8,6 C4,6 2,9 2,12 C2,15 4,18 8,18 M16,6 C20,6 22,9 22,12 C22,15 20,18 16,18"
-                  Stroke="#AAAAAA" StrokeThickness="1.5" Width="14" Height="14"
-                  Stretch="Uniform" Fill="Transparent" />
-        </Button>
-    </StackPanel>
+            <TextBlock Text="Режим:"
+                       Foreground="{StaticResource TextTertiaryBrush}"
+                       FontSize="{StaticResource FontSizeSmall}"
+                       VerticalAlignment="Center" />
+            <ComboBox x:Name="BlendModeCombo" Width="120" SelectedIndex="0"
+                      FontSize="{StaticResource FontSizeBody}">
+                <ComboBoxItem Content="Нормальный" />
+                <ComboBoxItem Content="Умножение" />
+                <ComboBoxItem Content="Экран" />
+                <ComboBoxItem Content="Осветление" />
+                <ComboBoxItem Content="Затемнение" />
+            </ComboBox>
+
+            <Border Background="{StaticResource SeparatorBrushCustom}"
+                    Width="1" Height="18" />
+
+            <TextBlock Text="Непрозрачность:"
+                       Foreground="{StaticResource TextTertiaryBrush}"
+                       FontSize="{StaticResource FontSizeSmall}"
+                       VerticalAlignment="Center" />
+            <Slider x:Name="OpacitySlider" Width="80"
+                    Minimum="0" Maximum="100" Value="100"
+                    VerticalAlignment="Center" />
+            <TextBlock x:Name="OpacityText" Text="100%"
+                       Foreground="{StaticResource TextSecondaryBrush}"
+                       FontSize="{StaticResource FontSizeSmall}"
+                       Width="36" VerticalAlignment="Center" />
+
+            <Border Background="{StaticResource SeparatorBrushCustom}"
+                    Width="1" Height="18" />
+
+            <TextBlock Text="Размер:"
+                       Foreground="{StaticResource TextTertiaryBrush}"
+                       FontSize="{StaticResource FontSizeSmall}"
+                       VerticalAlignment="Center" />
+            <TextBox x:Name="BrushSizeBox" Width="50"
+                     Text="20" PlaceholderText="px"
+                     FontSize="{StaticResource FontSizeBody}"
+                     VerticalAlignment="Center" />
+
+            <Border Background="{StaticResource SeparatorBrushCustom}"
+                    Width="1" Height="18" />
+
+            <Button ToolTip.Tip="Привязка к краям"
+                    Padding="3" Background="Transparent"
+                    BorderThickness="0" Height="24" Width="24">
+                <Path Data="M2,2 L22,2 L22,22 L2,22 Z M6,6 L6,18 L18,18 L18,6 Z"
+                      Stroke="{StaticResource TextTertiaryBrush}"
+                      StrokeThickness="1.5" Width="14" Height="14"
+                      Stretch="Uniform" Fill="Transparent" />
+            </Button>
+
+            <Button ToolTip.Tip="Симметрия"
+                    Padding="3" Background="Transparent"
+                    BorderThickness="0" Height="24" Width="24">
+                <Path Data="M12,2 L12,22 M8,6 C4,6 2,9 2,12 C2,15 4,18 8,18 M16,6 C20,6 22,9 22,12 C22,15 20,18 16,18"
+                      Stroke="{StaticResource TextTertiaryBrush}"
+                      StrokeThickness="1.5" Width="14" Height="14"
+                      Stretch="Uniform" Fill="Transparent" />
+            </Button>
+        </StackPanel>
+    </Border>
 
 </UserControl>

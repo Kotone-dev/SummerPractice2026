@@ -1,0 +1,50 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="Editor.App.ColorPickerDialog"
+        Title="Выбор цвета"
+        Width="340" Height="420"
+        WindowStartupLocation="CenterOwner"
+        CanResize="False"
+        Background="{StaticResource WindowBackgroundBrush}">
+
+    <StackPanel Margin="16" Spacing="12">
+        <TextBlock Text="Выберите цвет:" Foreground="{StaticResource TextPrimaryBrush}"
+                   FontSize="{StaticResource FontSizeBody}" />
+
+        <Grid RowDefinitions="Auto,Auto,Auto,Auto" ColumnDefinitions="Auto,*" RowSpacing="8" ColumnSpacing="12">
+            <TextBlock Grid.Row="0" Grid.Column="0" Text="R:" VerticalAlignment="Center"
+                       Foreground="{StaticResource TextSecondaryBrush}" Width="20" />
+            <Slider Grid.Row="0" Grid.Column="1" x:Name="RedSlider" Minimum="0" Maximum="255" Value="0" Width="240" />
+
+            <TextBlock Grid.Row="1" Grid.Column="0" Text="G:" VerticalAlignment="Center"
+                       Foreground="{StaticResource TextSecondaryBrush}" Width="20" />
+            <Slider Grid.Row="1" Grid.Column="1" x:Name="GreenSlider" Minimum="0" Maximum="255" Value="0" Width="240" />
+
+            <TextBlock Grid.Row="2" Grid.Column="0" Text="B:" VerticalAlignment="Center"
+                       Foreground="{StaticResource TextSecondaryBrush}" Width="20" />
+            <Slider Grid.Row="2" Grid.Column="1" x:Name="BlueSlider" Minimum="0" Maximum="255" Value="0" Width="240" />
+
+            <TextBlock Grid.Row="3" Grid.Column="0" Text="A:" VerticalAlignment="Center"
+                       Foreground="{StaticResource TextSecondaryBrush}" Width="20" />
+            <Slider Grid.Row="3" Grid.Column="1" x:Name="AlphaSlider" Minimum="0" Maximum="255" Value="255" Width="240" />
+        </Grid>
+
+        <Grid ColumnDefinitions="*,*" RowDefinitions="Auto,Auto" ColumnSpacing="12" RowSpacing="8">
+            <TextBlock Grid.Row="0" Grid.Column="0" x:Name="HexLabel" Text="#00000000"
+                       Foreground="{StaticResource TextSecondaryBrush}"
+                       FontSize="{StaticResource FontSizeBody}" VerticalAlignment="Center" />
+            <Border Grid.Row="0" Grid.Column="1" x:Name="PreviewBorder"
+                    Width="40" Height="40" CornerRadius="4"
+                    BorderBrush="{StaticResource BorderBrushCustom}" BorderThickness="1" />
+        </Grid>
+
+        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8">
+            <Button Content="Отмена" Width="90" Height="28" x:Name="BtnCancel"
+                    Background="{StaticResource PanelBackgroundBrush}"
+                    Foreground="{StaticResource TextPrimaryBrush}" />
+            <Button Content="OK" Width="90" Height="28" x:Name="BtnOk"
+                    Background="{StaticResource AccentBrush}"
+                    Foreground="White" />
+        </StackPanel>
+    </StackPanel>
+</Window>

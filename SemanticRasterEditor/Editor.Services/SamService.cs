@@ -1,6 +1,5 @@
 using Microsoft.ML.OnnxRuntime;
 using Microsoft.ML.OnnxRuntime.Tensors;
-using OpenCvSharp;
 using SkiaSharp;
 
 namespace Editor.Services
@@ -19,7 +18,16 @@ namespace Editor.Services
                 throw new ArgumentException("Путь к decoder не может быть пустым", nameof(decoderPath));
 
             _encoder = new InferenceSession(encoderPath);
-            _decoder = new InferenceSession(decoderPath);
+
+            try
+            {
+                _decoder = new InferenceSession(decoderPath);
+            }
+            catch (Microsoft.ML.OnnxRuntime.OnnxRuntimeException)
+            {
+                _encoder?.Dispose();
+                throw;
+            }
         }
 
         public static SamService LoadFromDirectory(string modelsDir)
@@ -42,6 +50,9 @@ namespace Editor.Services
 
             int origW = image.Width;
             int origH = image.Height;
+
+            if (origW <= 0 || origH <= 0)
+                throw new ArgumentException("Изображение должно иметь положительные размеры", nameof(image));
 
             using var padded = SamPreprocessor.ResizeAndPad(image);
             var tensorData = SamPreprocessor.ToTensor(padded);
@@ -66,6 +77,8 @@ namespace Editor.Services
             };
 
             using var results = _encoder.Run(inputs);
+            if (results.Count == 0)
+                throw new InvalidOperationException("Encoder не вернул результатов");
             return results.First().AsTensor<float>().ToArray();
         }
 
@@ -107,32 +120,31 @@ namespace Editor.Services
 
             using var results = _decoder.Run(inputs);
 
+            if (results.Count == 0)
+                throw new InvalidOperationException("Decoder не вернул результатов");
             var masks = results.First().AsTensor<float>().ToArray();
 
             return CreateMaskBitmap(masks, origW, origH);
         }
 
-        private static SKBitmap CreateMaskBitmap(float[] maskData, int width, int height)
+        private static unsafe SKBitmap CreateMaskBitmap(float[] maskData, int width, int height)
         {
             var mask = new SKBitmap(width, height, SKColorType.Alpha8, SKAlphaType.Unpremul);
+
+            if (maskData.Length == 0)
+                return mask;
 
             float maxVal = maskData.Max();
             if (maxVal <= 0f)
                 return mask;
 
-            for (int y = 0; y < height; y++)
-            {
-                for (int x = 0; x < width; x++)
-                {
-                    int idx = y * width + x;
-                    if (idx >= maskData.Length)
-                        break;
+            float scale = 255f / maxVal;
+            var pixels = (byte*)mask.GetPixels().ToPointer();
+            int pixelCount = width * height;
+            int count = Math.Min(pixelCount, maskData.Length);
 
-                    float val = maskData[idx];
-                    byte alpha = (byte)(val / maxVal * 255);
-                    mask.SetPixel(x, y, new SKColor(0, 0, 0, alpha));
-                }
-            }
+            for (int i = 0; i < count; i++)
+                pixels[i] = (byte)(maskData[i] * scale);
 
             return mask;
         }
@@ -145,7 +157,6 @@ namespace Editor.Services
             _encoder.Dispose();
             _decoder.Dispose();
             _disposed = true;
-            GC.SuppressFinalize(this);
         }
     }
 }

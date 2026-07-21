@@ -5,30 +5,38 @@
         Width="400" Height="220"
         WindowStartupLocation="CenterOwner"
         CanResize="False"
-        Background="#1B1E22"
-        FontFamily="Segoe UI"
-        FontSize="11">
+        Background="{StaticResource WindowBackgroundBrush}"
+        FontFamily="Segoe UI">
 
     <Grid Margin="16" RowDefinitions="Auto,Auto,Auto,*">
 
         <Grid Grid.Row="0" ColumnDefinitions="100,*" Margin="0,0,0,12">
-            <TextBlock Text="Яркость:" Foreground="#CCCCCC" VerticalAlignment="Center" />
+            <TextBlock Text="Яркость:"
+                       Foreground="{StaticResource TextSecondaryBrush}"
+                       FontSize="{StaticResource FontSizeBody}"
+                       VerticalAlignment="Center" />
             <Slider Grid.Column="1" x:Name="BrightnessSlider"
                     Minimum="-255" Maximum="255" Value="0"
                     TickFrequency="1" IsSnapToTickEnabled="True" />
         </Grid>
 
         <Grid Grid.Row="1" ColumnDefinitions="100,*" Margin="0,0,0,12">
-            <TextBlock Text="Контраст:" Foreground="#CCCCCC" VerticalAlignment="Center" />
+            <TextBlock Text="Контраст:"
+                       Foreground="{StaticResource TextSecondaryBrush}"
+                       FontSize="{StaticResource FontSizeBody}"
+                       VerticalAlignment="Center" />
             <Slider Grid.Column="1" x:Name="ContrastSlider"
                     Minimum="-100" Maximum="100" Value="0"
                     TickFrequency="1" IsSnapToTickEnabled="True" />
         </Grid>
 
-        <StackPanel Grid.Row="3" Orientation="Horizontal" HorizontalAlignment="Right">
-            <Button Content="Отмена" Width="100" Margin="0,0,8,0"
+        <StackPanel Grid.Row="3" Orientation="Horizontal"
+                    HorizontalAlignment="Right" Spacing="8">
+            <Button Content="Отмена" Width="100" Height="28"
+                    FontSize="{StaticResource FontSizeBody}"
                     Click="OnCancelClick" />
-            <Button Content="Применить" Width="100"
+            <Button Content="Применить" Width="100" Height="28"
+                    FontSize="{StaticResource FontSizeBody}"
                     Click="OnApplyClick" />
         </StackPanel>
     </Grid>

@@ -1,33 +1,41 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              x:Class="Editor.App.DocumentTab"
-             Height="28" Background="#24272B"
+             Height="30"
+             Background="{StaticResource ToolbarBackgroundBrush}"
              FontFamily="Segoe UI">
 
-    <Border BorderBrush="#4A4A4A" BorderThickness="0,0,0,1" Padding="10,4">
-        <StackPanel Orientation="Horizontal" Spacing="6">
+    <Border BorderBrush="{StaticResource BorderBrushCustom}"
+            BorderThickness="0,0,0,1"
+            Padding="12,6">
+        <StackPanel Orientation="Horizontal" Spacing="8">
             <TextBlock x:Name="FileNameText"
                        Text="Без имени"
-                       Foreground="#AAAAAA"
-                       FontSize="11"
+                       Foreground="{StaticResource TextSecondaryBrush}"
+                       FontSize="{StaticResource FontSizeSmall}"
                        VerticalAlignment="Center" />
-            <TextBlock Text="@" Foreground="#555555" FontSize="11" VerticalAlignment="Center" />
+            <TextBlock Text="·"
+                       Foreground="{StaticResource TextDisabledBrush}"
+                       FontSize="{StaticResource FontSizeSmall}"
+                       VerticalAlignment="Center" />
             <TextBlock x:Name="ZoomText"
                        Text="100%"
-                       Foreground="#AAAAAA"
-                       FontSize="11"
+                       Foreground="{StaticResource TextSecondaryBrush}"
+                       FontSize="{StaticResource FontSizeSmall}"
                        VerticalAlignment="Center" />
-            <TextBlock Text="(" Foreground="#555555" FontSize="11" VerticalAlignment="Center" />
+            <TextBlock Text="·"
+                       Foreground="{StaticResource TextDisabledBrush}"
+                       FontSize="{StaticResource FontSizeSmall}"
+                       VerticalAlignment="Center" />
             <TextBlock x:Name="ColorModeText"
                        Text="RGB/8"
-                       Foreground="#AAAAAA"
-                       FontSize="11"
+                       Foreground="{StaticResource TextSecondaryBrush}"
+                       FontSize="{StaticResource FontSizeSmall}"
                        VerticalAlignment="Center" />
-            <TextBlock Text=")" Foreground="#555555" FontSize="11" VerticalAlignment="Center" />
             <TextBlock x:Name="ModifiedIndicator"
-                       Text="*"
-                       Foreground="#CCCCCC"
-                       FontSize="11"
+                       Text="●"
+                       Foreground="{StaticResource AccentBrush}"
+                       FontSize="8"
                        VerticalAlignment="Center"
                        IsVisible="False" />
         </StackPanel>

@@ -33,6 +33,10 @@ namespace Editor.Services
                 throw new ArgumentNullException(nameof(image));
             if (mask is null)
                 throw new ArgumentNullException(nameof(mask));
+            if (image.Width <= 0 || image.Height <= 0)
+                throw new ArgumentException("Изображение должно иметь положительные размеры", nameof(image));
+            if (mask.Width <= 0 || mask.Height <= 0)
+                throw new ArgumentException("Маска должна иметь положительные размеры", nameof(mask));
 
             int origW = image.Width;
             int origH = image.Height;
@@ -47,6 +51,19 @@ namespace Editor.Services
 
         private float[] RunInference(float[] imageData, float[] maskData)
         {
+            int expectedImageSize = 3 * LaMaPreprocessor.InputSize * LaMaPreprocessor.InputSize;
+            int expectedMaskSize = LaMaPreprocessor.InputSize * LaMaPreprocessor.InputSize;
+
+            if (imageData.Length != expectedImageSize)
+                throw new ArgumentException(
+                    $"Неверный размер данных изображения: {imageData.Length}. Ожидалось {expectedImageSize}",
+                    nameof(imageData));
+
+            if (maskData.Length != expectedMaskSize)
+                throw new ArgumentException(
+                    $"Неверный размер данных маски: {maskData.Length}. Ожидалось {expectedMaskSize}",
+                    nameof(maskData));
+
             var imageTensor = new DenseTensor<float>(
                 imageData,
                 new ReadOnlySpan<int>(new[] { 1, 3, LaMaPreprocessor.InputSize, LaMaPreprocessor.InputSize }));
@@ -62,7 +79,11 @@ namespace Editor.Services
             };
 
             using var results = _session.Run(inputs);
-            return results.First().AsTensor<float>().ToArray();
+
+            if (results.Count == 0)
+                throw new InvalidOperationException("LaMa модель не вернула результатов");
+            var resultTensor = results.First().AsTensor<float>();
+            return resultTensor.ToArray();
         }
 
         public void Dispose()
@@ -72,7 +93,6 @@ namespace Editor.Services
 
             _session.Dispose();
             _disposed = true;
-            GC.SuppressFinalize(this);
         }
     }
 }

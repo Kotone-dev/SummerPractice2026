@@ -1,15 +1,16 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              x:Class="Editor.App.ChannelsPanel"
-             Width="280" Background="#2C2F34"
+             Width="300"
+             Background="{StaticResource PanelBackgroundBrush}"
              FontFamily="Segoe UI">
 
     <DockPanel>
         <ListBox x:Name="ChannelList"
                  Background="Transparent"
                  BorderThickness="0"
-                 Foreground="#CCCCCC"
-                 FontSize="11"
+                 Foreground="{StaticResource TextPrimaryBrush}"
+                 FontSize="{StaticResource FontSizeBody}"
                  SelectionMode="Single" />
     </DockPanel>
 
