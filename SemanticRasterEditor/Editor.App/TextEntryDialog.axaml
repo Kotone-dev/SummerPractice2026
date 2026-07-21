@@ -1,0 +1,52 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="Editor.App.TextEntryDialog"
+        Title="Ввод текста"
+        Width="400" Height="200"
+        WindowStartupLocation="CenterOwner"
+        Background="{StaticResource WindowBackgroundBrush}"
+        FontFamily="Segoe UI">
+
+    <Grid RowDefinitions="Auto,Auto,Auto,*,Auto" Margin="16">
+        <TextBlock Text="Текст:" Grid.Row="0"
+                   Foreground="{StaticResource TextSecondaryBrush}"
+                   FontSize="{StaticResource FontSizeSmall}"
+                   Margin="0,0,0,4" />
+        <TextBox x:Name="TextInput" Grid.Row="1"
+                 FontSize="{StaticResource FontSizeBody}"
+                 Height="32"
+                 VerticalContentAlignment="Center" />
+
+        <Grid Grid.Row="2" ColumnDefinitions="Auto,Auto,Auto" Margin="0,8,0,0">
+            <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="4" Margin="0,0,12,0">
+                <TextBlock Text="Шрифт:" Foreground="{StaticResource TextSecondaryBrush}"
+                           FontSize="{StaticResource FontSizeSmall}" VerticalAlignment="Center" />
+                <ComboBox x:Name="FontCombo" Width="120" SelectedIndex="0"
+                          FontSize="{StaticResource FontSizeBody}">
+                    <ComboBoxItem Content="Arial" />
+                    <ComboBoxItem Content="Times New Roman" />
+                    <ComboBoxItem Content="Courier New" />
+                    <ComboBoxItem Content="Verdana" />
+                    <ComboBoxItem Content="Segoe UI" />
+                </ComboBox>
+            </StackPanel>
+
+            <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="4" Margin="0,0,12,0">
+                <TextBlock Text="Размер:" Foreground="{StaticResource TextSecondaryBrush}"
+                           FontSize="{StaticResource FontSizeSmall}" VerticalAlignment="Center" />
+                <TextBox x:Name="FontSizeInput" Width="50" Text="24"
+                         FontSize="{StaticResource FontSizeBody}"
+                         VerticalAlignment="Center" />
+            </StackPanel>
+        </Grid>
+
+        <StackPanel Grid.Row="4" Orientation="Horizontal" Spacing="8"
+                    HorizontalAlignment="Right" Margin="0,12,0,0">
+            <Button x:Name="BtnOk" Content="OK" Width="80" Height="28"
+                    Background="{StaticResource AccentBrush}" Foreground="White"
+                    HorizontalAlignment="Right" />
+            <Button x:Name="BtnCancel" Content="Отмена" Width="80" Height="28"
+                    HorizontalAlignment="Right" />
+        </StackPanel>
+    </Grid>
+</Window>

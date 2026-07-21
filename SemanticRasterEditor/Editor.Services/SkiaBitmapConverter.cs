@@ -18,11 +18,10 @@ namespace Editor.Services
             var buffer = new byte[size];
             Marshal.Copy(pixels, buffer, 0, size);
 
-            var mat = Mat.FromPixelData(info.Height, info.Width, MatType.CV_8UC4, buffer);
+            using var mat = Mat.FromPixelData(info.Height, info.Width, MatType.CV_8UC4, buffer);
 
             var bgra = new Mat();
             Cv2.CvtColor(mat, bgra, ColorConversionCodes.BGRA2BGR);
-            mat.Dispose();
 
             return bgra;
         }
@@ -32,7 +31,7 @@ namespace Editor.Services
             if (mat is null)
                 throw new ArgumentNullException(nameof(mat));
 
-            var converted = new Mat();
+            using var converted = new Mat();
             Cv2.CvtColor(mat, converted, ColorConversionCodes.BGR2BGRA);
 
             var size = (int)(converted.Step() * converted.Rows);
@@ -43,8 +42,6 @@ namespace Editor.Services
 
             var dst = bitmap.GetPixels();
             Marshal.Copy(bytes, 0, dst, size);
-
-            converted.Dispose();
 
             return bitmap;
         }

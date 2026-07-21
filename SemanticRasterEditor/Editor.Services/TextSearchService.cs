@@ -33,38 +33,47 @@ namespace Editor.Services
             if (segments.Count == 0)
                 return null;
 
-            var textEmb = _ruClip.EncodeText(query);
-
-            int bestIndex = -1;
-            float bestSimilarity = float.MinValue;
-
-            for (int i = 0; i < segments.Count; i++)
+            try
             {
-                using var cropped = ApplyMaskToImage(image, segments[i]);
-                if (cropped is null)
-                    continue;
+                var textEmb = _ruClip.EncodeText(query);
 
-                var segEmb = _ruClip.EncodeImage(cropped);
-                float similarity = RuClipService.CosineSimilarity(textEmb, segEmb);
+                int bestIndex = -1;
+                float bestSimilarity = float.MinValue;
 
-                if (similarity > bestSimilarity)
+                for (int i = 0; i < segments.Count; i++)
                 {
-                    bestSimilarity = similarity;
-                    bestIndex = i;
+                    using var cropped = ApplyMaskToImage(image, segments[i]);
+                    if (cropped is null)
+                        continue;
+
+                    var segEmb = _ruClip.EncodeImage(cropped);
+                    float similarity = RuClipService.CosineSimilarity(textEmb, segEmb);
+
+                    if (similarity > bestSimilarity)
+                    {
+                        bestSimilarity = similarity;
+                        bestIndex = i;
+                    }
                 }
+
+                if (bestIndex < 0)
+                    return null;
+
+                var result = segments[bestIndex];
+                for (int i = 0; i < segments.Count; i++)
+                {
+                    if (i != bestIndex)
+                        segments[i].Dispose();
+                }
+
+                return result;
             }
-
-            if (bestIndex < 0)
-                return null;
-
-            var result = segments[bestIndex];
-            for (int i = 0; i < segments.Count; i++)
+            catch
             {
-                if (i != bestIndex)
-                    segments[i].Dispose();
+                foreach (var seg in segments)
+                    seg.Dispose();
+                throw;
             }
-
-            return result;
         }
 
         private static SKBitmap? ApplyMaskToImage(SKBitmap image, SKBitmap mask)
@@ -96,18 +105,13 @@ namespace Editor.Services
 
             int cropW = maxX - minX + 1;
             int cropH = maxY - minY + 1;
-            cropW = Math.Min(cropW, RuClipPreprocessor.ImageSize);
-            cropH = Math.Min(cropH, RuClipPreprocessor.ImageSize);
 
-            float scaleX = (float)cropW / image.Width;
-            float scaleY = (float)cropH / image.Height;
+            float scaleX = (float)RuClipPreprocessor.ImageSize / cropW;
+            float scaleY = (float)RuClipPreprocessor.ImageSize / cropH;
             float scale = Math.Min(scaleX, scaleY);
 
-            int resizedW = (int)(image.Width * scale);
-            int resizedH = (int)(image.Height * scale);
-
-            resizedW = Math.Max(resizedW, 1);
-            resizedH = Math.Max(resizedH, 1);
+            int resizedW = Math.Max((int)(cropW * scale), 1);
+            int resizedH = Math.Max((int)(cropH * scale), 1);
 
             var resized = new SKBitmap(resizedW, resizedH, SKImageInfo.PlatformColorType, SKAlphaType.Premul);
 
@@ -115,17 +119,20 @@ namespace Editor.Services
             {
                 canvas.Clear(SKColors.Black);
 
-                var src = new SKRect(0, 0, image.Width, image.Height);
+                var src = new SKRect(minX, minY, maxX + 1, maxY + 1);
                 var dst = new SKRect(0, 0, resizedW, resizedH);
-                canvas.DrawBitmap(image, src, dst);
+                canvas.DrawBitmap(image, src, dst,
+                    new SKSamplingOptions(SKFilterMode.Linear, SKMipmapMode.None));
 
                 using var maskPaint = new SKPaint
                 {
                     BlendMode = SKBlendMode.DstIn
                 };
-                var maskSrc = new SKRect(0, 0, mask.Width, mask.Height);
+                var maskSrc = new SKRect(minX, minY, maxX + 1, maxY + 1);
                 var maskDst = new SKRect(0, 0, resizedW, resizedH);
-                canvas.DrawBitmap(mask, maskSrc, maskDst, maskPaint);
+                canvas.DrawBitmap(mask, maskSrc, maskDst,
+                    new SKSamplingOptions(SKFilterMode.Linear, SKMipmapMode.None),
+                    maskPaint);
             }
 
             return resized;
@@ -139,7 +146,6 @@ namespace Editor.Services
             _fastSam.Dispose();
             _ruClip.Dispose();
             _disposed = true;
-            GC.SuppressFinalize(this);
         }
     }
 }

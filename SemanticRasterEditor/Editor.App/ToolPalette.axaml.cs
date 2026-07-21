@@ -31,6 +31,28 @@ namespace Editor.App
             SelectTool("Move", BtnMove);
         }
 
+        public void SelectTool(string tool)
+        {
+            Button? button = tool switch
+            {
+                "Move" => BtnMove,
+                "Marquee" => BtnMarquee,
+                "Lasso" => BtnLasso,
+                "Brush" => BtnBrush,
+                "Eraser" => BtnEraser,
+                "Fill" => BtnFill,
+                "Text" => BtnText,
+                "Eyedropper" => BtnEyedropper,
+                "Crop" => BtnCrop,
+                "Hand" => BtnHand,
+                "Zoom" => BtnZoom,
+                "SmartSelect" => BtnSmartSelect,
+                _ => null
+            };
+            if (button != null)
+                SelectTool(tool, button);
+        }
+
         private void SelectTool(string tool, Button button)
         {
             if (Content is ScrollViewer sv && sv.Content is StackPanel sp)

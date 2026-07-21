@@ -13,11 +13,11 @@ namespace Editor.App
         private double _cursorPos = -1;
 
         private static readonly ISolidColorBrush BgBrush = new SolidColorBrush(Color.Parse("#1B1E22"));
-        private static readonly ISolidColorBrush TickBrush = new SolidColorBrush(Color.Parse("#666666"));
-        private static readonly ISolidColorBrush MajorBrush = new SolidColorBrush(Color.Parse("#AAAAAA"));
-        private static readonly ISolidColorBrush TextBrush = new SolidColorBrush(Color.Parse("#AAAAAA"));
+        private static readonly ISolidColorBrush TickBrush = new SolidColorBrush(Color.Parse("#555555"));
+        private static readonly ISolidColorBrush MajorBrush = new SolidColorBrush(Color.Parse("#999999"));
+        private static readonly ISolidColorBrush TextBrush = new SolidColorBrush(Color.Parse("#999999"));
         private static readonly ISolidColorBrush CursorBrush = new SolidColorBrush(Color.Parse("#D4A843"));
-        private static readonly ISolidColorBrush RulerBorderBrush = new SolidColorBrush(Color.Parse("#4A4A4A"));
+        private static readonly ISolidColorBrush RulerBorderBrush = new SolidColorBrush(Color.Parse("#3E4249"));
         private static readonly IPen TickPen = new Pen(TickBrush, 1);
         private static readonly IPen MajorPen = new Pen(MajorBrush, 1);
         private static readonly IPen CursorPen = new Pen(CursorBrush, 1);

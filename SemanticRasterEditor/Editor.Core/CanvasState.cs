@@ -26,6 +26,8 @@ namespace Editor.Core
 
         public void SetZoom(float zoom)
         {
+            if (float.IsNaN(zoom) || float.IsInfinity(zoom))
+                return;
             _zoom = Math.Clamp(zoom, MinZoom, MaxZoom);
         }
 
@@ -39,10 +41,12 @@ namespace Editor.Core
         {
             if (imageSize.Width <= 0 || imageSize.Height <= 0)
                 return;
+            if (canvasSize.Width <= 0 || canvasSize.Height <= 0)
+                return;
 
             float scaleX = (float)canvasSize.Width / imageSize.Width;
             float scaleY = (float)canvasSize.Height / imageSize.Height;
-            _zoom = Math.Min(scaleX, scaleY);
+            _zoom = Math.Clamp(Math.Min(scaleX, scaleY), MinZoom, MaxZoom);
 
             float offsetX = (canvasSize.Width - imageSize.Width * _zoom) / 2f;
             float offsetY = (canvasSize.Height - imageSize.Height * _zoom) / 2f;
