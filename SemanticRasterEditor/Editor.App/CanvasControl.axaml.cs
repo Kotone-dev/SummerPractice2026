@@ -340,7 +340,7 @@ namespace Editor.App
                 }
             }
 
-            done:
+        done:
             sw.Stop();
             System.Diagnostics.Debug.WriteLine(
                 $"[SetImage] SkiaToAv={sw.ElapsedMilliseconds}ms {bitmap.Width}x{bitmap.Height} " +
@@ -652,6 +652,7 @@ namespace Editor.App
 
                 minX = ix; maxX = ix; minY = iy; maxY = iy;
 
+                Span<int> dirs = stackalloc int[] { -1, 0, 1, 0, -1 };
                 while (queue.Count > 0)
                 {
                     var (cx, cy) = queue.Dequeue();
@@ -661,7 +662,6 @@ namespace Editor.App
                     if (cy < minY) minY = cy;
                     if (cy > maxY) maxY = cy;
 
-                    Span<int> dirs = stackalloc int[] { -1, 0, 1, 0, -1 };
                     for (int d = 0; d < 4; d++)
                     {
                         int nx = cx + dirs[d];

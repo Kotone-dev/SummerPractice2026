@@ -858,10 +858,17 @@ namespace Editor.App
                 {
                     var tool = e.Key switch
                     {
-                        Key.V => "Move", Key.M => "Marquee", Key.L => "Lasso",
-                        Key.B => "Brush", Key.E => "Eraser",
-                        Key.T => "Text", Key.I => "Eyedropper", Key.C => "Crop",
-                        Key.H => "Hand", Key.Z => "Zoom", _ => null
+                        Key.V => "Move",
+                        Key.M => "Marquee",
+                        Key.L => "Lasso",
+                        Key.B => "Brush",
+                        Key.E => "Eraser",
+                        Key.T => "Text",
+                        Key.I => "Eyedropper",
+                        Key.C => "Crop",
+                        Key.H => "Hand",
+                        Key.Z => "Zoom",
+                        _ => null
                     };
                     if (tool != null) { ToolPalette.SelectTool(tool); e.Handled = true; }
                 }
